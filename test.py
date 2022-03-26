@@ -5,9 +5,11 @@ import numpy as np
 import serial
 
 #%%
-def get_cords_from_joint_name(results, fingerJoint, image_height, image_width):
-    cords = results.left_hand_landmarks.landmark[mp_holistic.HandLandmark[fingerJoint]]
-    cordList = np.array([cords.x, cords.y, cords.z])
+def get_cords_from_joint_name(resultLandmark, fingerJoint, image_height, image_width):
+    cords = resultLandmark.landmark[mp_holistic.HandLandmark[fingerJoint]]
+    cordList = np.array(
+        [cords.x * image_width, cords.y * image_height, cords.z * image_width]
+    )
     return cordList
 
 
@@ -19,45 +21,59 @@ def calculate_angle(threeCordsArray):
     mag_cb = np.sqrt(cb.dot(cb))
     dotP = ab.dot(cb)
     degree = np.degrees(np.arccos(dotP / (mag_ab * mag_cb)))
-    return round(degree)
+    roundDegree = round(degree / 10) * 10
+    return roundDegree
 
 
-def calc_angles_for_joints(results, fingerList, jointList, image_height, image_width):
-    if results.left_hand_landmarks == None:
-        return []
-
-    wristCord = get_cords_from_joint_name(results, "WRIST", image_height, image_width)
+def calc_angles_for_joints(
+    results, fingerList, jointList, tb_jointList, image_height, image_width
+):
     degreeArray = []
+    fingerArray = ["LEFT_" + finger for finger in fingerList] + [
+        "RIGHT_" + finger for finger in fingerList
+    ]
 
-    for finger in fingerList:
-        cordArray = [wristCord]
-        degreeList = []
-        for joint in jointList:
-            fingerJoint = "_".join([finger, joint])
-            cordList = get_cords_from_joint_name(
-                results, fingerJoint, image_height, image_width
+    for resultLandmark in [results.left_hand_landmarks, results.right_hand_landmarks]:
+        if resultLandmark == None:
+            degreeArray.append([[0, 0, 0]] * len(fingerList))
+        else:
+            wristCord = get_cords_from_joint_name(
+                resultLandmark, "WRIST", image_height, image_width
             )
-            cordArray.append(cordList)
-        for i in range(len(cordArray) - 2):
-            degree = calculate_angle((cordArray[i : 3 + i]))
-            degreeList.append(degree)
-        degreeArray.append(degreeList)
 
-    return degreeArray
+            for finger in fingerList:
+                if finger == "THUMB":
+                    tmp_jointList = tb_jointList
+                else:
+                    tmp_jointList = jointList
+                cordArray = [wristCord]
+                degreeList = []
+                for joint in tmp_jointList:
+                    fingerJoint = "_".join([finger, joint])
+                    cordList = get_cords_from_joint_name(
+                        resultLandmark, fingerJoint, image_height, image_width
+                    )
+                    cordArray.append(cordList)
+                for i in range(len(cordArray) - 2):
+                    degree = calculate_angle((cordArray[i : 3 + i]))
+                    degreeList.append(degree)
+                degreeArray.append(degreeList)
+
+    return degreeArray, fingerArray
 
 
-fingerList = ["INDEX_FINGER", "MIDDLE_FINGER", "RING_FINGER", "PINKY"]
-jointList = ["MCP", "PIP", "DIP", "TIP"]
-degreeArray = calc_angles_for_joints(results, fingerList, jointList, 0, 0)
+# fingerList = ["INDEX_FINGER", "MIDDLE_FINGER", "RING_FINGER", "PINKY"]
+# jointList = ["MCP", "PIP", "DIP", "TIP"]
+# degreeArray = calc_angles_for_joints(results, fingerList, jointList, 0, 0)
 
-tb_fingerList = ["THUMB"]
-tb_jointList = ["CMC", "MCP", "IP", "TIP"]
-tb_degreeArray = calc_angles_for_joints(results, tb_fingerList, tb_jointList, 0, 0)
+# tb_fingerList = ["THUMB"]
+# tb_jointList = ["CMC", "MCP", "IP", "TIP"]
+# tb_degreeArray = calc_angles_for_joints(results, tb_fingerList, tb_jointList, 0, 0)
 
-for x, y in zip(tb_fingerList, tb_degreeArray):
-    print(x, y)
-for x, y in zip(fingerList, degreeArray):
-    print(x, y)
+# for x, y in zip(tb_fingerList, tb_degreeArray):
+#     print(x, y)
+# for x, y in zip(fingerList, degreeArray):
+#     print(x, y)
 
 #%%
 # START VIDEO
@@ -89,10 +105,11 @@ with mp_holistic.Holistic(
         results = holistic.process(image)
 
         # calculate values
-        fingerList = ["INDEX_FINGER", "MIDDLE_FINGER", "RING_FINGER", "PINKY"]
+        fingerList = ["THUMB", "INDEX_FINGER", "MIDDLE_FINGER", "RING_FINGER", "PINKY"]
         jointList = ["MCP", "PIP", "DIP", "TIP"]
-        degreeArray = calc_angles_for_joints(
-            results, fingerList, jointList, image_height, image_width
+        tb_jointList = ["CMC", "MCP", "IP", "TIP"]
+        degreeArray, fingerArray = calc_angles_for_joints(
+            results, fingerList, jointList, tb_jointList, image_height, image_width
         )
 
         # pose_landmarks, left_hand_landmarks, right_hand_landmarks
@@ -133,7 +150,7 @@ with mp_holistic.Holistic(
 
         # add angles
         pos = 0
-        for x, y in zip(fingerList, degreeArray):
+        for x, y in zip(fingerArray, degreeArray):
             y = " ".join([str(elem) for elem in y])
             pos += 30
             cv2.putText(
