@@ -196,3 +196,57 @@ end_hand_loc = (middle_joint + ring_joint) / 2
 
 
 #%%
+a = np.array([0, 0, 1])
+b = np.array([1, 1, 1])
+
+
+def align_vectors(a, b):
+    b = b / np.linalg.norm(b)
+    a = a / np.linalg.norm(a)
+    v = np.cross(a, b)
+    c = np.dot(a, b)
+
+    v1, v2, v3 = v
+    h = 1 / (1 + c)
+
+    Vmat = np.array([[0, -v3, v2], [v3, 0, -v1], [-v2, v1, 0]])
+
+    R = np.eye(3, dtype=np.float64) + Vmat + (Vmat.dot(Vmat) * h)
+    return R
+
+
+def angle(v1, v2):
+    radians = np.arctan2(np.cross(v1, v2), np.dot(v1, v2))
+    return radians
+
+
+# def angle(a, b):
+#     """Angle between vectors"""
+#     a = a / np.linalg.norm(a)
+#     b = b / np.linalg.norm(b)
+#     return np.arccos(a.dot(b))
+
+x_axis = [1, 0, 0]
+test = angle(x_axis, [1, -1, 0])
+np.degrees(test)
+
+
+#%%
+point = np.array([-0.02, 1.004, -0.02])
+direction = np.array([1.0, 0.0, 0.0])
+rotation = align_vectors(point, direction)
+
+# Rotate point in align with direction. The result vector is aligned with direction
+result = rotation.dot(point)
+print(result)
+print("Angle:", angle(direction, point))  # 0.0
+print("Length:", np.isclose(np.linalg.norm(point), np.linalg.norm(result)))  # True
+
+
+# Rotate direction by the matrix, result does not align with direction but the angle between the original vector (direction) and the result2 are the same.
+result2 = rotation.dot(direction)
+print(result2)
+print(
+    "Same Angle:", np.isclose(angle(point, result), angle(direction, result2))
+)  # True
+print("Length:", np.isclose(np.linalg.norm(direction), np.linalg.norm(result2)))  # True
