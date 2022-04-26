@@ -54,18 +54,8 @@ def calc_homo_matrix(angles, DH_table):
         s_alpha = round(np.sin(alpha), 10)
 
         homo_matrix = [
-            [
-                c_theta,
-                -s_theta * c_alpha,
-                s_theta * s_alpha,
-                r * c_theta,
-            ],
-            [
-                s_theta,
-                c_theta * c_alpha,
-                -c_theta * s_alpha,
-                r * s_theta,
-            ],
+            [c_theta, -s_theta * c_alpha, s_theta * s_alpha, r * c_theta,],
+            [s_theta, c_theta * c_alpha, -c_theta * s_alpha, r * s_theta,],
             [0, s_alpha, c_alpha, d],
             [0, 0, 0, 1],
         ]
