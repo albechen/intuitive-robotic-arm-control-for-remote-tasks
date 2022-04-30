@@ -135,43 +135,43 @@ lens = [1, 5, 7, 1, 1, 2]
 calc_angles_of_arm(END_CORD, lens)
 
 #%%
-angles = [90, 90, 90, 0, 90, 0]
+angles = [90, 90, 90, 20, 30, 70]
 DH_table = return_dh_table(angles, lens)
 
 homo_matrix_list = calc_homo_matrix(angles, DH_table)
 
+rot_06_test = calc_series_rotation(homo_matrix_list, 0, 6)[:3, :3]
 calc_series_rotation(homo_matrix_list, 0, 6)
 # np.dot(calc_series_rotation(homo_matrix_list, 0, 6)[:3, :3], np.array([[1], [0], [0]]))
 
 #%%
-angles = [90, 90, 90, 0, 0, 0]
-DH_table = return_dh_table(angles, lens)
+def calculate_wrist_angles(arm_angles, lens, rot_06):
+    DH_table = return_dh_table(angles, lens)
 
-homo_matrix_list = calc_homo_matrix(angles, DH_table)
+    homo_matrix_list = calc_homo_matrix(angles, DH_table)
 
-rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
-inv_rot_03 = np.linalg.inv(rot_03)
-rot_06 = [
-    [0, -1, 0],
-    [0, 0, 1],
-    [-1, 0, 0],
-]
+    rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
+    inv_rot_03 = np.linalg.inv(rot_03)
+    rot_36 = np.dot(inv_rot_03, rot_06)
 
-rot_36 = np.dot(inv_rot_03, rot_06)
-theta_5 = np.arcsin(rot_36[2, 2])
-if theta_5 != 0:
-    if rot_36[0, 2] == 0:
-        theta_6 = np.pi / 2
+    theta_5 = np.arcsin(rot_36[2, 2])
+    if theta_5 != 0:
+        if rot_36[0, 2] == 0:
+            theta_4 = np.pi / 2
+        else:
+            theta_4 = np.arctan(rot_36[1, 2] / rot_36[0, 2])
+        if rot_36[2, 0] == 0:
+            theta_6 = np.pi / 2
+        else:
+            theta_6 = np.arctan(-rot_36[2, 1] / rot_36[2, 0])
     else:
-        theta_6 = np.arctan(rot_36[1, 2] / rot_36[0, 2])
-    if rot_36[2, 0] == 0:
-        theta_4 = np.pi / 2
-    else:
-        theta_4 = np.arctan(-rot_36[2, 1] / rot_36[2, 0])
-else:
-    print("RIP")
+        print("RIP")
 
-print(np.degrees(theta_4), np.degrees(theta_5), np.degrees(theta_6))
+    return np.degrees(theta_4), np.degrees(theta_5), np.degrees(theta_6)
+
+
+arm_angles = [90, 90, 90, 0, 0, 0]
+calculate_wrist_angles(arm_angles, lens, rot_06_test)
 
 #%%
 
