@@ -146,9 +146,9 @@ calc_series_rotation(homo_matrix_list, 0, 6)
 
 #%%
 def calculate_wrist_angles(arm_angles, lens, rot_06):
-    DH_table = return_dh_table(angles, lens)
+    DH_table = return_dh_table(arm_angles, lens)
 
-    homo_matrix_list = calc_homo_matrix(angles, DH_table)
+    homo_matrix_list = calc_homo_matrix(arm_angles, DH_table)
 
     rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
     inv_rot_03 = np.linalg.inv(rot_03)
@@ -220,10 +220,12 @@ x_axis = [1, 0, 0]
 test = angle(x_axis, [1, -1, 0])
 np.degrees(test)
 
+#%%
+align_vectors(b, a).dot(np.array([1, 1, -1]))
 
 #%%
-point = np.array([-0.02, 1.004, -0.02])
-direction = np.array([1.0, 0.0, 0.0])
+point = np.array([0, 1, 0])
+direction = np.array([0.0, 0.0, 1.0])
 rotation = align_vectors(point, direction)
 
 # Rotate point in align with direction. The result vector is aligned with direction
@@ -240,3 +242,5 @@ print(
     "Same Angle:", np.isclose(angle(point, result), angle(direction, result2))
 )  # True
 print("Length:", np.isclose(np.linalg.norm(direction), np.linalg.norm(result2)))  # True
+
+# %%
