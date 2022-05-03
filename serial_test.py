@@ -1,14 +1,21 @@
 #%%
 import serial
 import struct
-from src.calculate_angles import calc_arm_angles, bound_angles
+from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 from time import sleep
 
 arduino_serial = serial.Serial("COM5", 9600)
 # %%
 lens_list = [8, 24.5, 20, 0]
 
-bounds_list = [{"min": 0, "max": 180}, {"min": 0, "max": 135}, {"min": 0, "max": 135}]
+bounds_list = [
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 135},
+    {"min": 0, "max": 135},
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 180},
+]
 
 
 cordList = [
@@ -20,7 +27,7 @@ cordList = [
 ]
 
 for cord in cordList:
-    print(calc_arm_angles(cord, lens_list, bounds_list))
+    print(calculate_angles_given_joint_loc(cord[0], cord[1], cord[2], lens_list))
 
 raw_wrist_angles = [
     [10, 120, 90],
@@ -29,11 +36,7 @@ raw_wrist_angles = [
     [90, 100, 30],
     [30, 130, 60],
 ]
-wrist_bound_list = [
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-]
+wrist_bound_list = []
 
 #%%
 for cord, wrist in zip(cordList, raw_wrist_angles):
