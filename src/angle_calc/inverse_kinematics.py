@@ -1,7 +1,7 @@
 #%%
 import numpy as np
 
-#%%
+
 def law_of_cos(e1, e2, opp):
     opp_angle = np.arccos((e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2))
     return opp_angle
@@ -191,7 +191,10 @@ def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
 # GIVEN ANGLES - GET END ROTATION MATRIX
 # use calculated rotation matrix to check if correct angles output wrist
 # ----
-# angles = [90, 90, 90, 20, 84, 109]
+# #%%
+# lens = [1, 5, 7, 1, 1, 2]
+# arm_angles = [30, 40, 70]
+# angles = arm_angles + [20, 84, -49.99999999871018]
 # DH_table = return_dh_table(angles, lens)
 
 # homo_matrix_list = calc_homo_matrix(angles, DH_table)
@@ -206,9 +209,10 @@ def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
 # print(test_x, test_z)
 # calc_series_rotation(homo_matrix_list, 0, 6)
 
-# arm_angles = [90, 90, 90, 0, 0, 0]
-# calc_wrist_angles(arm_angles, lens, rot_06_test)
+# #%%
+# calc_wrist_angles(arm_angles + [0,0,0], lens, rot_06_test)
 
+# #%%
 # ----
 # GIVEN FECTORS FOR WRIST - GET ROTATION MATRIX AND ANGLES NEEDED TO ACHIEVE
 # Should have same rotation matrix as above is same angles
@@ -243,7 +247,7 @@ def bound_angles(raw_angles_list, bounds_list):
                 adjusted_angles += 1
             else:
                 adj_angle = adj_angles_list[n]
-            adj_angles_list[n] = round(adj_angle, 5)
+            adj_angles_list[n] = int(round(adj_angle))
 
     return adj_angles_list
 
@@ -258,37 +262,35 @@ def calculate_angles_given_joint_loc(
     arm_angles = calc_arm_angles(wrist_loc, lens)
 
     wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vector)
-    print(wirst_rot_06)
     wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
 
     angles = arm_angles + wrist_angles
-    print(angles)
-    # angles = bound_angles(angles, bounds_list)
+    adj_angles = bound_angles(angles, bounds_list)
 
-    DH_table = return_dh_table(angles, lens)
-    homo_matrix_list = calc_homo_matrix(angles, DH_table)
+    DH_table = return_dh_table(adj_angles, lens)
+    homo_matrix_list = calc_homo_matrix(adj_angles, DH_table)
     end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
 
-    return angles, end_rot_matrix
+    return angles, adj_angles, end_rot_matrix
 
 
-bounds_list = [
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 135},
-    {"min": 0, "max": 135},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-]
+# bounds_list = [
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 135},
+#     {"min": 0, "max": 135},
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 180},
+# ]
 
-wrist_loc = [3, 8, 6]
-pinky_loc = [2, 10, 8]
-pointer_loc = [4, 11, 9]
-lens = [1, 5, 7, 1, 1, 2]
+# wrist_loc = [3, 8, 6]
+# pinky_loc = [2, 10, 8]
+# pointer_loc = [4, 11, 9]
+# lens = [1, 5, 7, 1, 1, 2]
 
-end_angles, end_rot_matrix = calculate_angles_given_joint_loc(
-    wrist_loc, pinky_loc, pointer_loc, lens, bounds_list
-)
-print(end_angles)
-print(end_rot_matrix)
+# end_angles, end_rot_matrix = calculate_angles_given_joint_loc(
+#     wrist_loc, pinky_loc, pointer_loc, lens, bounds_list
+# )
+# print(end_angles)
+# print(end_rot_matrix)
 # %%
