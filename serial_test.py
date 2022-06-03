@@ -1,12 +1,10 @@
-#%%
+# %%
 import numpy as np
 import serial
 import struct
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 from time import sleep
 
-#%%
-arduino_serial = serial.Serial("COM5", 9600)
 # %%
 lens_list = [8, 24.5, 23, 3, 5, 2]
 
@@ -20,10 +18,10 @@ bounds_list = [
 ]
 
 wrist_list = [
-    [15, 0, 18],  # Close 0 mid
-    [25, 25, 8],  # Far 45 low
+    [15, 0, 20],  # Close 0 mid
+    [25, 25, 15],  # Far 45 low
     [24, 15, 30],  # Mid 75 high
-    [0, 26, 8],  # mid 90 low
+    [0, 26, 15],  # mid 90 low
 ]
 
 pointer_pinky_list = [
@@ -43,28 +41,64 @@ combo_cords
 
 #%%
 adj_angle_list = []
+raw_angle_list = []
 for x in combo_cords:
     raw_angles, adj_angles, end_rot_matrix = calculate_angles_given_joint_loc(
         x[0], x[2], x[1], lens_list, bounds_list
     )
     adj_angle_list.append(adj_angles)
-adj_angle_list
+    raw_angle_list.append(raw_angles)
+print(np.array(adj_angle_list))
+print(np.array(raw_angle_list))
 
 # %%
-n = 3
+arduino_serial = serial.Serial("COM5", 9600)
+
+#%%
+n = 0
 adj_angles = adj_angle_list[n]
 print(adj_angles)
 arduino_serial.write(
     struct.pack(
-        ">BBBBBB",
+        ">BBBBBBB",
         adj_angles[0],
         adj_angles[1],
         adj_angles[2],
         adj_angles[3],
         adj_angles[4],
         adj_angles[5],
+        0,
     )
 )
+#%%
+arduino_serial.write(
+    struct.pack(
+        ">BBBBBBB",
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
+)
+#%%
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 120))
+#%%
+sleep(3)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 120))
+sleep(2)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 30))
+sleep(2)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 120))
+sleep(2)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 30))
+sleep(2)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 120))
+sleep(2)
+arduino_serial.write(struct.pack(">BBBBBBB", 90, 90, 90, 90, 90, 90, 30))
+sleep(2)
 # %%
 for adj_angles in adj_angle_list:
     print(adj_angles)
@@ -80,3 +114,4 @@ for adj_angles in adj_angle_list:
         )
     )
     sleep(3)
+# %%

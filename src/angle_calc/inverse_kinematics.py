@@ -265,13 +265,14 @@ def calculate_angles_given_joint_loc(
     wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
 
     angles = arm_angles + wrist_angles
+    raw_angles = [round(x) for x in angles]
     adj_angles = bound_angles(angles, bounds_list)
 
     DH_table = return_dh_table(adj_angles, lens)
     homo_matrix_list = calc_homo_matrix(adj_angles, DH_table)
     end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
 
-    return angles, adj_angles, end_rot_matrix
+    return raw_angles, adj_angles, end_rot_matrix
 
 
 # bounds_list = [
