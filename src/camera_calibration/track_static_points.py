@@ -4,6 +4,7 @@ import mediapipe as mp
 import glob
 import pickle
 
+#%%
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -126,9 +127,13 @@ joint_list = [
 ]
 
 cam_dict = gather_cam_0_1_points(
-    base_path="calibration_images/",
+    base_path="images/",
     cam0_str="c0_hand",
     cam1_str="c1_hand",
     joint_list=joint_list,
 )
 #%%
+import pickle
+
+with open("calibration_matrix/annotated_points.pkl", "rb") as handle:
+        all_points = pickle.load(handle)

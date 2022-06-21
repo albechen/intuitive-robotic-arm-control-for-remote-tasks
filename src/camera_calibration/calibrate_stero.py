@@ -18,14 +18,14 @@ def stereo_calibrate(
     c1_images = sorted(glob.glob(image_folder + cam1_loc))
 
     # frame dimensions. Frames should be the same size.
-    width = cv2.imread(c0_images[0])[0].shape[1]
-    height = cv2.imread(c0_images[0])[0].shape[0]
+    width = cv2.imread(c0_images[0]).shape[1]
+    height = cv2.imread(c0_images[0]).shape[0]
 
     # change this if stereo calibration not good.
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.0001)
 
-    rows = 6  # number of checkerboard rows.
-    columns = 9  # number of checkerboard columns.
+    rows = 9  # number of checkerboard rows.
+    columns = 6  # number of checkerboard columns.
     world_scaling = 1.0  # change this to the real world square size. Or not.
 
     # coordinates of squares in the checkerboard world space
@@ -52,7 +52,6 @@ def stereo_calibrate(
         c_ret2, corners2 = cv2.findChessboardCorners(gray2, (rows, columns), None)
 
         if c_ret1 == True and c_ret2 == True:
-            print(fname1, fname2)
             corners1 = cv2.cornerSubPix(gray1, corners1, (11, 11), (-1, -1), criteria)
             corners2 = cv2.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
 
@@ -93,7 +92,7 @@ stero_dict = stereo_calibrate(
     clb_folder="calibration_matrix/",
     clb_dict_loc="calibration_dict.npy",
     stero_dict_loc="stero_clb_dict.npy",
-    image_folder="calibration_images/",
+    image_folder="images/",
     cam0_loc="c0_syc/*",
     cam1_loc="c1_syc/*",
 )
@@ -131,3 +130,4 @@ proj_dict = calc_projection_matrix(
     stero_str="stero_clb_dict.npy",
     projection_str="projection_dict.npy",
 )
+# %%

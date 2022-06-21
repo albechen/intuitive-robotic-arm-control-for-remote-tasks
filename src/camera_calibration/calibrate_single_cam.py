@@ -9,15 +9,15 @@ def calibrate_camera(show_image, images_folder):
     images = sorted(glob.glob(images_folder))
 
     # frame dimensions. Frames should be the same size.
-    width = cv2.imread(images[0])[0].shape[1]
-    height = cv2.imread(images[0])[0].shape[0]
+    width = cv2.imread(images[0]).shape[1]
+    height = cv2.imread(images[0]).shape[0]
 
     # criteria used by checkerboard pattern detector.
     # Change this if the code can't find the checkerboard
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-    rows = 6  # number of checkerboard rows.
-    columns = 9  # number of checkerboard columns.
+    rows = 9  # number of checkerboard rows.
+    columns = 6  # number of checkerboard columns.
     world_scaling = 1.0  # change this to the real world square size. Or not.
 
     # coordinates of squares in the checkerboard world space
@@ -70,18 +70,14 @@ def calibrate_camera(show_image, images_folder):
 
 #%%
 def list_frames_no_board(cam0, cam1):
-    mtx0, dst0, retList0 = calibrate_camera(
-        False, images_folder="calibration_images/%s/*" % cam0
-    )
-    mtx1, dst1, retList1 = calibrate_camera(
-        False, images_folder="calibration_images/%s/*" % cam1
-    )
+    mtx0, dst0, retList0 = calibrate_camera(False, images_folder="images/%s/*" % cam0)
+    mtx1, dst1, retList1 = calibrate_camera(False, images_folder="images/%s/*" % cam1)
 
     false_list = [f0 == f1 for f0, f1 in zip(retList0, retList1)]
     for flag, fn0, fn1 in zip(
         false_list,
-        sorted(glob.glob("calibration_images/c0_syc/*")),
-        sorted(glob.glob("calibration_images/c1_syc/*")),
+        sorted(glob.glob("images/c0_syc/*")),
+        sorted(glob.glob("images/c1_syc/*")),
     ):
         if flag == False:
             print(fn0, fn1)
@@ -89,17 +85,13 @@ def list_frames_no_board(cam0, cam1):
 
 def show_each_image(cam_list):
     for cam in cam_list:
-        mtx, dst, retList = calibrate_camera(
-            True, images_folder="calibration_images/%s/*" % (cam)
-        )
+        mtx, dst, retList = calibrate_camera(True, images_folder="images/%s/*" % (cam))
 
 
 def finalize_calibration(cam_list):
     calibration_dict = {}
     for cam in cam_list:
-        mtx, dst, retList = calibrate_camera(
-            False, images_folder="calibration_images/%s/*" % (cam)
-        )
+        mtx, dst, retList = calibrate_camera(False, images_folder="images/%s/*" % (cam))
         calibration_dict[cam[:2] + "_mtx"] = mtx
         calibration_dict[cam[:2] + "_dst"] = dst
 
@@ -110,8 +102,9 @@ def finalize_calibration(cam_list):
 list_frames_no_board("c0_syc", "c1_syc")
 
 #%%
-show_each_image(["c0", "c1"])
+show_each_image(["c0_syc", "c1_syc"])
 
 #%%
-finalize_calibration(["c0_idv", "c1_idv"])
+finalize_calibration(["c0_syc", "c1_syc"])
+
 # %%

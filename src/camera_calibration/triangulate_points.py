@@ -8,6 +8,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from scipy import linalg
 
 #%%
+
+
 def get_c0_c1_points(cal_folder, ann_pts_str, img_num):
     with open(cal_folder + ann_pts_str, "rb") as handle:
         all_points = pickle.load(handle)
@@ -79,9 +81,9 @@ def graph_3d_space(img_num, cal_folder, ann_pts_loc, proj_loc):
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-    ax.set_xlim3d(-15, 5)
-    ax.set_ylim3d(-10, 10)
-    ax.set_zlim3d(10, 30)
+    # ax.set_xlim3d(-30, 30)
+    # ax.set_ylim3d(-30, 30)
+    # ax.set_zlim3d(-30, 30)
 
     conn_left = [
         [0, 1],
@@ -115,12 +117,13 @@ def graph_3d_space(img_num, cal_folder, ann_pts_loc, proj_loc):
 
 
 #%%
+%matplotlib ipympl
 cal_folder = "calibration_matrix/"
 proj_loc = "projection_dict.npy"
 ann_pts_loc = "annotated_points.pkl"
-img_folder = "calibration_images/"
-img_num = 1
+img_folder = "images/"
 
+img_num = 0
 show_annotated_image(img_num, img_folder, cal_folder, ann_pts_loc)
 graph_3d_space(img_num, cal_folder, ann_pts_loc, proj_loc)
 
