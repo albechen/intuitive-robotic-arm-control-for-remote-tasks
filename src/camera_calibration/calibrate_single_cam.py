@@ -51,8 +51,8 @@ def calibrate_camera(show_image, images_folder):
 
             # Draw and display the corners
             corners = cv2.drawChessboardCorners(img, (rows, columns), corners, ret)
-            cv2.imshow(fname, img)
             if show_image == True:
+                cv2.imshow(fname, img)
                 cv2.waitKey(-1)
             else:
                 pass
@@ -61,23 +61,31 @@ def calibrate_camera(show_image, images_folder):
     ret, mtx, dst, rvecs, tvecs = cv2.calibrateCamera(
         objpoints, imgpoints, (width, height), None, None
     )
+
+    nmtx, roi = cv2.getOptimalNewCameraMatrix(
+        mtx, dst, (width, height), 1, (width, height)
+    )
     print("rmse:", ret)
     print("camera matrix:\n", mtx)
     print("distortion coeffs:", dst)
 
-    return mtx, dst, retList
+    return mtx, dst, retList, nmtx, roi
 
 
 #%%
 def list_frames_no_board(cam0, cam1):
-    mtx0, dst0, retList0 = calibrate_camera(False, images_folder="images/%s/*" % cam0)
-    mtx1, dst1, retList1 = calibrate_camera(False, images_folder="images/%s/*" % cam1)
+    mtx0, dst0, retList0, nmtx0, roi0 = calibrate_camera(
+        False, images_folder="images/sync/%s/*" % cam0
+    )
+    mtx1, dst1, retList1, nmtx1, roi1 = calibrate_camera(
+        False, images_folder="images/sync/%s/*" % cam1
+    )
 
     false_list = [f0 == f1 for f0, f1 in zip(retList0, retList1)]
     for flag, fn0, fn1 in zip(
         false_list,
-        sorted(glob.glob("images/c0_syc/*")),
-        sorted(glob.glob("images/c1_syc/*")),
+        sorted(glob.glob("images/sync/%s/*" % cam0)),
+        sorted(glob.glob("images/sync/%s/*" % cam1)),
     ):
         if flag == False:
             print(fn0, fn1)
@@ -85,26 +93,53 @@ def list_frames_no_board(cam0, cam1):
 
 def show_each_image(cam_list):
     for cam in cam_list:
-        mtx, dst, retList = calibrate_camera(True, images_folder="images/%s/*" % (cam))
+        mtx, dst, retList, nmtx, roi = calibrate_camera(
+            True, images_folder="images/sync/%s/*" % cam
+        )
 
 
 def finalize_calibration(cam_list):
     calibration_dict = {}
     for cam in cam_list:
-        mtx, dst, retList = calibrate_camera(False, images_folder="images/%s/*" % (cam))
-        calibration_dict[cam[:2] + "_mtx"] = mtx
-        calibration_dict[cam[:2] + "_dst"] = dst
+        mtx, dst, retList, nmtx, roi = calibrate_camera(
+            False, images_folder="images/sync/%s/*" % cam
+        )
+
+        calibration_dict[cam[:2]] = {"mtx": mtx, "dst": dst, "nmtx": nmtx, "roi": roi}
 
     np.save("calibration_matrix/calibration_dict.npy", calibration_dict)
 
 
 # %%
-list_frames_no_board("c0_syc", "c1_syc")
+# list_frames_no_board("c0", "c1")
 
-#%%
-show_each_image(["c0_syc", "c1_syc"])
+# #%%
+# show_each_image(["c0", "c1"])
 
-#%%
-finalize_calibration(["c0_syc", "c1_syc"])
+# #%%
+finalize_calibration(["c0", "c1"])
+
+# %%
+# clb_dict = np.load(
+#     "calibration_matrix/calibration_dict.npy", allow_pickle="TRUE"
+# ).item()
+# clb_dict
+# #%%
+# cam = 'c1'
+
+# img = cv2.imread('images/sync/c0/20220603_134410.png'.format(cam))
+# cam_dict = clb_dict[cam]
+
+# dst = cv2.undistort(
+#     img, cam_dict["mtx"], cam_dict["dst"], None, cam_dict["nmtx"]
+# )
+
+# x, y, w, h = cam_dict["roi"]
+# # dst = dst[y : y + h, x : x + w]
+# print(dst.shape, img.shape)
+# cv2.imshow("undistort", dst)
+# cv2.imshow("img", img)
+# cv2.waitKey(-1)
+# cv2.destroyAllWindows()
 
 # %%

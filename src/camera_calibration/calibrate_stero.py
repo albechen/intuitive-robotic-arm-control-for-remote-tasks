@@ -9,10 +9,8 @@ def stereo_calibrate(
 ):
 
     clb_dict = np.load(clb_folder + clb_dict_loc, allow_pickle="TRUE").item()
-    mtx1 = clb_dict["c0_mtx"]
-    dst1 = clb_dict["c0_dst"]
-    mtx2 = clb_dict["c1_mtx"]
-    dst2 = clb_dict["c1_dst"]
+    c0_dict = clb_dict["c0"]
+    c1_dict = clb_dict["c1"]
 
     c0_images = sorted(glob.glob(image_folder + cam0_loc))
     c1_images = sorted(glob.glob(image_folder + cam1_loc))
@@ -44,6 +42,12 @@ def stereo_calibrate(
 
         frame1 = cv2.imread(fname1, 1)
         frame2 = cv2.imread(fname2, 1)
+        frame1 = cv2.undistort(
+            frame1, c0_dict["mtx"], c0_dict["dst"], None, c0_dict["nmtx"]
+        )
+        frame1 = cv2.undistort(
+            frame2, c1_dict["mtx"], c1_dict["dst"], None, c1_dict["nmtx"]
+        )
 
         gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
         gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
@@ -56,10 +60,10 @@ def stereo_calibrate(
             corners2 = cv2.cornerSubPix(gray2, corners2, (11, 11), (-1, -1), criteria)
 
             cv2.drawChessboardCorners(frame1, (rows, columns), corners1, c_ret1)
-            cv2.imshow("img", frame1)
+            # cv2.imshow("img", frame1)
 
             cv2.drawChessboardCorners(frame2, (rows, columns), corners2, c_ret2)
-            cv2.imshow("img2", frame2)
+            # cv2.imshow("img2", frame2)
 
             objpoints.append(objp)
             imgpoints_left.append(corners1)
@@ -73,10 +77,10 @@ def stereo_calibrate(
         objpoints,
         imgpoints_left,
         imgpoints_right,
-        mtx1,
-        dst1,
-        mtx2,
-        dst2,
+        c0_dict["mtx"],
+        c0_dict["dst"],
+        c1_dict["mtx"],
+        c1_dict["dst"],
         (width, height),
         criteria=criteria,
         flags=stereocalibration_flags,
@@ -92,9 +96,9 @@ stero_dict = stereo_calibrate(
     clb_folder="calibration_matrix/",
     clb_dict_loc="calibration_dict.npy",
     stero_dict_loc="stero_clb_dict.npy",
-    image_folder="images/",
-    cam0_loc="c0_syc/*",
-    cam1_loc="c1_syc/*",
+    image_folder="images/sync/",
+    cam0_loc="c0/*",
+    cam1_loc="c1/*",
 )
 
 #%%
@@ -102,10 +106,10 @@ def calc_projection_matrix(base_folder, calb_str, stero_str, projection_str):
     clb_dict = np.load(base_folder + calb_str, allow_pickle="TRUE").item()
     stero_dict = np.load(base_folder + stero_str, allow_pickle="TRUE").item()
 
-    mtx1 = clb_dict["c0_mtx"]
-    dst1 = clb_dict["c0_dst"]
-    mtx2 = clb_dict["c1_mtx"]
-    dst2 = clb_dict["c1_dst"]
+    mtx1 = clb_dict['c0']["mtx"]
+    dst1 = clb_dict['c0']["dst"]
+    mtx2 = clb_dict['c1']["mtx"]
+    dst2 = clb_dict['c1']["dst"]
 
     R = stero_dict["rot_mtx"]
     T = stero_dict["trn_mtx"]
@@ -131,3 +135,4 @@ proj_dict = calc_projection_matrix(
     projection_str="projection_dict.npy",
 )
 # %%
+# proj_dict

@@ -1,27 +1,37 @@
 #%%
 import numpy as np
+import math
 
 
 def law_of_cos(e1, e2, opp):
-    opp_angle = np.arccos((e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2))
-    return opp_angle
+    if e1 == 0 or e2 == 0:
+        return 0
+    else:
+        opp_angle = np.arccos((e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2))
+        return opp_angle
 
 
 def calc_arm_angles(END_CORD, lens):
     X, Y, Z = END_CORD[0], END_CORD[1], END_CORD[2]
 
-    theta_1 = np.arcsin(Y / (X ** 2 + Y ** 2) ** 0.5)
+    if X == 0 and Y == 0:
+        return [0, 0, 0]
 
-    z_adj = Z - lens[0]
-    d = sum([X ** 2, Y ** 2, z_adj ** 2]) ** 0.5
+    else:
+        theta_1 = np.arcsin(Y / (X ** 2 + Y ** 2) ** 0.5)
 
-    theta_21 = np.arctan(z_adj / (X ** 2 + Y ** 2) ** 0.5)
-    theta_22 = law_of_cos(lens[1], d, lens[2] + lens[3])
-    theta_2 = theta_21 + theta_22
+        z_adj = Z - lens[0]
+        d = sum([X ** 2, Y ** 2, z_adj ** 2]) ** 0.5
 
-    theta_3 = np.radians(180) - law_of_cos(lens[1], lens[2] + lens[3], d)
+        theta_21 = np.arctan(z_adj / (X ** 2 + Y ** 2) ** 0.5)
+        theta_22 = law_of_cos(lens[1], d, lens[2] + lens[3])
+        theta_2 = theta_21 + theta_22
 
-    return [np.degrees(theta_1), np.degrees(theta_2), np.degrees(theta_3)]
+        theta_3 = np.radians(180) - law_of_cos(lens[1], lens[2] + lens[3], d)
+
+        arm_angles = [np.degrees(theta_1), np.degrees(theta_2), np.degrees(theta_3)]
+
+    return arm_angles
 
 
 def calc_series_rotation(homo_matrix_list, first_value, last_value):
@@ -172,12 +182,54 @@ def calc_rot_given_zx_vectors(z_vector, x_vector):
     return rot_matrix
 
 
+#%%
+
+
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1, v2):
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
+
+    >>> angle_between((1, 0, 0), (0, 1, 0))
+    1.5707963267948966
+    >>> angle_between((1, 0, 0), (1, 0, 0))
+    0.0
+    >>> angle_between((1, 0, 0), (-1, 0, 0))
+    3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    deg = np.rad2deg(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
+    if math.isnan(deg):
+        return 999
+    else:
+        return deg
+
+
 def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
     pinky_vec = np.array(pinky_loc) - np.array(wrist_loc)
     pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
-
     palm_vec = np.cross(pinky_vec, pointer_vec)
-    return pointer_vec, palm_vec
+    palm_vec_2 = np.cross(pointer_vec, pinky_vec)
+    return pointer_vec, palm_vec, palm_vec_2
+
+
+def calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl):
+    thumb_vec = np.array(thumb_loc) - np.array(wrist_loc)
+    pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
+    joint_agl = int(round(angle_between(thumb_vec, pointer_vec)))
+
+    if joint_agl < closed_agl:
+        return 0
+    elif joint_agl == 999:
+        return 999
+    elif joint_agl > max_agl:
+        return max_agl
+    else:
+        return joint_agl
 
 
 # ----
@@ -233,46 +285,99 @@ def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
 # pointer_loc = [2, 4, 7]
 
 # calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc)
-def bound_angles(raw_angles_list, bounds_list):
-    adj_angles_list = raw_angles_list.copy()
-    adjusted_angles = 1
-    while adjusted_angles > 0:
-        adjusted_angles = 0
-        for n in range(len(raw_angles_list)):
-            if adj_angles_list[n] < bounds_list[n]["min"]:
-                adj_angle = bounds_list[n]["min"]
-                adjusted_angles += 1
-            elif adj_angles_list[n] > bounds_list[n]["max"]:
-                adj_angle = bounds_list[n]["max"]
-                adjusted_angles += 1
-            else:
-                adj_angle = adj_angles_list[n]
-            adj_angles_list[n] = int(round(adj_angle))
+# def bound_angles(raw_angles_list, bounds_list):
+#     adj_angles_list = raw_angles_list.copy()
+#     adjusted_angles = 1
+#     while adjusted_angles > 0:
+#         adjusted_angles = 0
+#         for n in range(len(raw_angles_list)):
+#             if adj_angles_list[n] < bounds_list[n]["min"]:
+#                 adj_angle = bounds_list[n]["min"]
+#                 adjusted_angles += 1
+#             elif adj_angles_list[n] > bounds_list[n]["max"]:
+#                 adj_angle = bounds_list[n]["max"]
+#                 adjusted_angles += 1
+#             else:
+#                 adj_angle = adj_angles_list[n]
+#             adj_angles_list[n] = int(round(adj_angle))
 
-    return adj_angles_list
+#     return adj_angles_list
+
+
+def min_max_bound(agl, bounds):
+    if agl < bounds["min"]:
+        return bounds["min"]
+    elif agl > bounds["max"]:
+        return bounds["max"]
+    else:
+        return agl
+
+
+def bound_angles(raw_angles_list, bounds_list):
+    agls = raw_angles_list.copy()
+    agls = [int(round(x)) for x in agls]
+
+    for n in [0, 1, 2, 4]:
+        min_max_bound(agls[n], bounds_list[n])
+
+    if agls[3] < 0:
+        agls[3] = 180 + agls[3]
+        agls[4] = 180 - agls[4]
+    if agls[5] < 0:
+        agls[5] = 180 + agls[5]
+
+    for n in [3, 4, 5]:
+        agls[n] = min_max_bound(agls[n], bounds_list[n])
+
+    return agls
 
 
 #%%
 def calculate_angles_given_joint_loc(
-    wrist_loc, pinky_loc, pointer_loc, lens, bounds_list
+    wrist_loc, pinky_loc, pointer_loc, thumb_loc, lens, bounds_list
 ):
-    z_vector, x_vector = calc_x_z_vectors_from_joint_loc(
+    # get inital vectors given just locaitons
+    z_vector, x_vector, x_vector_2 = calc_x_z_vectors_from_joint_loc(
         wrist_loc, pinky_loc, pointer_loc
     )
+
+    closed_agl = 10
+    max_agl = 100
+    claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl)
+
     arm_angles = calc_arm_angles(wrist_loc, lens)
 
-    wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vector)
-    wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
+    ## get wrist angle given z and x vectors
+    # two options since can flip palm either way
+    wrist_angles_list = []
+    for x_vec in [x_vector, x_vector_2]:
+        wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vec)
+        wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
+        wrist_angles_list.append(wrist_angles)
+
+    if sum(1 for i in wrist_angles_list[0] if i < 0) > sum(
+        1 for i in wrist_angles_list[1] if i < 0
+    ):
+        wrist_angles = wrist_angles_list[1]
+    else:
+        wrist_angles = wrist_angles_list[0]
+
+    # combine raw angles and adjust for negative values
+    # and out of bound angles
 
     angles = arm_angles + wrist_angles
+    angles = [0 if math.isnan(x) else x for x in angles]
+
     raw_angles = [round(x) for x in angles]
     adj_angles = bound_angles(angles, bounds_list)
 
+    # with all angles can just calculate final angles and locations
+    # mainly used for double checking
     DH_table = return_dh_table(adj_angles, lens)
     homo_matrix_list = calc_homo_matrix(adj_angles, DH_table)
     end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
 
-    return raw_angles, adj_angles, end_rot_matrix
+    return raw_angles, adj_angles, end_rot_matrix, claw_agl
 
 
 # bounds_list = [
@@ -287,11 +392,14 @@ def calculate_angles_given_joint_loc(
 # wrist_loc = [3, 8, 6]
 # pinky_loc = [2, 10, 8]
 # pointer_loc = [4, 11, 9]
+# thumb_loc = [5, 9, 6]
 # lens = [1, 5, 7, 1, 1, 2]
 
-# end_angles, end_rot_matrix = calculate_angles_given_joint_loc(
-#     wrist_loc, pinky_loc, pointer_loc, lens, bounds_list
+# raw_angles, end_angles, end_rot_matrix, claw_agl = calculate_angles_given_joint_loc(
+#     wrist_loc, pinky_loc, pointer_loc, thumb_loc, lens, bounds_list
 # )
+# print(raw_angles)
 # print(end_angles)
 # print(end_rot_matrix)
+# print(claw_agl)
 # %%
