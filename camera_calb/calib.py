@@ -98,7 +98,7 @@ def save_frames_single_camera(camera_name):
     start = False
     saved_count = 0
 
-    while True:
+    while 1:
 
         ret, frame = cap.read()
         if ret == False:
@@ -271,7 +271,7 @@ def save_frames_two_cams(
     cooldown = cooldown_time
     start = False
     saved_count = 0
-    while True:
+    while 1:
 
         ret0, frame0 = cap0.read()
         ret1, frame1 = cap1.read()
@@ -565,7 +565,7 @@ def check_calibration(
     cap1.set(3, width)
     cap1.set(4, height)
 
-    while True:
+    while 1:
 
         ret0, frame0 = cap0.read()
         ret1, frame1 = cap1.read()
@@ -678,14 +678,16 @@ def get_cam1_to_world_transforms(
 
 #%%
 """Step1. Save calibration frames for single cameras"""
-save_frames_single_camera("camera0")  # save frames for camera0
-save_frames_single_camera("camera1")  # save frames for camera1
-
-#%%
 """Step2. Obtain camera intrinsic matrices and save them"""
-# camera0 intrinsics
+save_frames_single_camera("camera0")  # save frames for camera0
 images_prefix = "frames/camera0*"
 cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_prefix)
+
+
+#%%
+"""Step1. Save calibration frames for single cameras"""
+"""Step2. Obtain camera intrinsic matrices and save them"""
+save_frames_single_camera("camera1")  # save frames for camera1
 images_prefix = "frames/camera1*"
 cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
 

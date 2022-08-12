@@ -6,6 +6,11 @@ import pickle
 from src.camera_calibration.utils import DLT
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 
+import serial
+import struct
+
+# arduino_serial = serial.Serial("COM5", 9600)
+
 calibration_settings = {
     "camera0": 0,
     "camera1": 1,
@@ -178,8 +183,8 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=1
     )
 
-    left_origin = [10, 15, 65]
-    right_origin = [-20, 15, 65]
+    left_origin = [25, 20, 70]
+    right_origin = [-25, 20, 70]
     left_cam0, left_cam1, right_cam0, right_cam1 = check_calibration(
         P0, P1, left_origin, right_origin
     )
@@ -194,7 +199,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     angles_list = [[0, 0, 0, 0, 0, 0, 0]]
     num_to_avg = 10
 
-    while True:
+    while 1:
 
         # read frames from stream
         ret0, frame0 = cap0.read()
@@ -280,14 +285,16 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
                 if kp_0 == [0, 0] or kp_1 == [0, 0]:
                     kp_3d[dir][joint] = [0, 0, 0]
+                    kp_3d[dir]["raw_" + joint] = [0, 0, 0]
 
                 else:
                     kp = DLT(P0, P1, kp_0, kp_1)
+                    kp_3d[dir]["raw_" + joint] = [round(x) for x in kp]
                     kp_3d[dir][joint] = offset_3d_origin(kp, new_origin)
 
             if kp_3d[dir]["WRIST"] == [0, 0, 0]:
                 adj_angles = [0, 0, 0, 0, 0, 0]
-                claw_agl = 999
+                claw_agl = 255
             else:
                 (
                     raw_angles,
@@ -309,7 +316,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             # catch instances where failed angle calc
             # average out certain number of angles and remove latest
             # just delete first angle
-            if adj_angles != [0, 0, 0, 0, 0, 0] and claw_agl != 999:
+            if adj_angles != [0, 0, 0, 0, 0, 0] and claw_agl != 255:
                 if len(angles_list) == num_to_avg:
                     del angles_list[0]
                     angles_list += [angles]
@@ -322,6 +329,18 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         frame0 = cv.flip(frame0, 1)
 
         height = 30
+        for dir in ["left", "right"]:
+            cv.putText(
+                frame0,
+                dir + "- RAW Wrist: " + str(kp_3d[dir]["raw_WRIST"]),
+                (20, height),
+                cv.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                2,
+            )
+            height += 30
+
         for dir in ["left", "right"]:
             for joint in joint_list:
                 cv.putText(
@@ -348,6 +367,20 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                     2,
                 )
                 height_2 -= 30
+
+        # left_angles = angles_dict["left"]["agl_list"]
+        # arduino_serial.write(
+        #     struct.pack(
+        #         ">BBBBBBB",
+        #         left_angles[0],
+        #         left_angles[1],
+        #         left_angles[2],
+        #         left_angles[3],
+        #         left_angles[4],
+        #         left_angles[5],
+        #         left_angles[6],
+        #     )
+        # )
 
         cv.imshow("cam1", frame1)
         cv.imshow("cam0", frame0)

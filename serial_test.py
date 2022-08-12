@@ -5,6 +5,24 @@ import struct
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 from time import sleep
 
+
+#%%
+
+arduino_serial = serial.Serial("COM5", 9600)
+
+#%%
+arduino_serial.write(
+    struct.pack(
+        ">BBBBBBB",
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+    )
+)
 # %%
 lens_list = [8, 24.5, 23, 3, 5, 2]
 
