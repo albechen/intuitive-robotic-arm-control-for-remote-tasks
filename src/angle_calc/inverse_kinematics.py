@@ -4,11 +4,11 @@ import math
 
 
 def law_of_cos(e1, e2, opp):
-    if e1 == 0 or e2 == 0:
-        return 0
-    else:
+    if e1 > 0 or e2 > 0:
         opp_angle = np.arccos((e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2))
         return opp_angle
+    else:
+        return 0
 
 
 def calc_arm_angles(END_CORD, lens):
@@ -225,7 +225,7 @@ def calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl):
     if joint_agl < closed_agl:
         return 0
     elif joint_agl == 999:
-        return 999
+        return 255
     elif joint_agl > max_agl:
         return max_agl
     else:

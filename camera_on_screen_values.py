@@ -9,7 +9,7 @@ from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 import serial
 import struct
 
-# arduino_serial = serial.Serial("COM5", 9600)
+arduino_serial = serial.Serial("COM5", 9600)
 
 calibration_settings = {
     "camera0": 0,
@@ -368,19 +368,20 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 )
                 height_2 -= 30
 
-        # left_angles = angles_dict["left"]["agl_list"]
-        # arduino_serial.write(
-        #     struct.pack(
-        #         ">BBBBBBB",
-        #         left_angles[0],
-        #         left_angles[1],
-        #         left_angles[2],
-        #         left_angles[3],
-        #         left_angles[4],
-        #         left_angles[5],
-        #         left_angles[6],
-        #     )
-        # )
+        left_angles = angles_dict["left"]["agl_list"]
+        print(left_angles)
+        arduino_serial.write(
+            struct.pack(
+                ">BBBBBBB",
+                left_angles[0],
+                left_angles[1],
+                left_angles[2],
+                left_angles[3],
+                left_angles[4],
+                left_angles[5],
+                left_angles[6],
+            )
+        )
 
         cv.imshow("cam1", frame1)
         cv.imshow("cam0", frame0)
