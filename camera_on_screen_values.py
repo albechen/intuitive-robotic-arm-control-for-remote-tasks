@@ -6,10 +6,10 @@ import pickle
 from src.camera_calibration.utils import DLT
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 
-import serial
-import struct
+# import serial
+# import struct
 
-arduino_serial = serial.Serial("COM5", 9600)
+# arduino_serial = serial.Serial("COM5", 9600)
 
 calibration_settings = {
     "camera0": 0,
@@ -196,7 +196,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     # kpts_3d = []
 
     # initialize avg list for angles
-    angles_list = [[0, 0, 0, 0, 0, 0, 0]]
+    angles_list_dict = {"left": [[0, 0, 0, 0, 0, 0, 0]], "right": [[0, 0, 0, 0, 0, 0, 0]]}
     num_to_avg = 10
 
     while 1:
@@ -316,12 +316,15 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             # catch instances where failed angle calc
             # average out certain number of angles and remove latest
             # just delete first angle
+            angles_list = angles_list_dict[dir]
             if adj_angles != [0, 0, 0, 0, 0, 0] and claw_agl != 255:
                 if len(angles_list) == num_to_avg:
                     del angles_list[0]
                     angles_list += [angles]
                 else:
                     angles_list += [angles]
+            angles_list_dict[dir] = angles_list
+
             avg_agls = np.mean(np.array(angles_list), axis=0)
             angles_dict[dir]["agl_list"] = [round(x) for x in avg_agls]
 
@@ -370,18 +373,18 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
         left_angles = angles_dict["left"]["agl_list"]
         print(left_angles)
-        arduino_serial.write(
-            struct.pack(
-                ">BBBBBBB",
-                left_angles[0],
-                left_angles[1],
-                left_angles[2],
-                left_angles[3],
-                left_angles[4],
-                left_angles[5],
-                left_angles[6],
-            )
-        )
+        # arduino_serial.write(
+        #     struct.pack(
+        #         ">BBBBBBB",
+        #         left_angles[0],
+        #         left_angles[1],
+        #         left_angles[2],
+        #         left_angles[3],
+        #         left_angles[4],
+        #         left_angles[5],
+        #         left_angles[6],
+        #     )
+        # )
 
         cv.imshow("cam1", frame1)
         cv.imshow("cam0", frame0)

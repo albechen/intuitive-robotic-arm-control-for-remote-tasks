@@ -4,8 +4,9 @@ import math
 
 
 def law_of_cos(e1, e2, opp):
-    if e1 > 0 or e2 > 0:
-        opp_angle = np.arccos((e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2))
+    ratio = (e1 ** 2 + e2 ** 2 - opp ** 2) / (2 * e1 * e2)
+    if ratio >= -1 and ratio <= 1:
+        opp_angle = np.arccos(ratio)
         return opp_angle
     else:
         return 0
@@ -355,12 +356,12 @@ def calculate_angles_given_joint_loc(
         wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
         wrist_angles_list.append(wrist_angles)
 
-    if sum(1 for i in wrist_angles_list[0] if i < 0) > sum(
-        1 for i in wrist_angles_list[1] if i < 0
+    if sum(1 for i in wrist_angles_list[0] if i > 0) > sum(
+        1 for i in wrist_angles_list[1] if i > 0
     ):
-        wrist_angles = wrist_angles_list[1]
-    else:
         wrist_angles = wrist_angles_list[0]
+    else:
+        wrist_angles = wrist_angles_list[1]
 
     # combine raw angles and adjust for negative values
     # and out of bound angles
@@ -380,26 +381,52 @@ def calculate_angles_given_joint_loc(
     return raw_angles, adj_angles, end_rot_matrix, claw_agl
 
 
-# bounds_list = [
-#     {"min": 0, "max": 180},
-#     {"min": 0, "max": 135},
-#     {"min": 0, "max": 135},
-#     {"min": 0, "max": 180},
-#     {"min": 0, "max": 180},
-#     {"min": 0, "max": 180},
-# ]
+#%%
+lengths = [0, 8, 10, 2, 3, 1]
 
-# wrist_loc = [3, 8, 6]
-# pinky_loc = [2, 10, 8]
-# pointer_loc = [4, 11, 9]
-# thumb_loc = [5, 9, 6]
-# lens = [1, 5, 7, 1, 1, 2]
+bounds_list = [
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 135},
+    {"min": 0, "max": 135},
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 180},
+    {"min": 0, "max": 180},
+]
 
-# raw_angles, end_angles, end_rot_matrix, claw_agl = calculate_angles_given_joint_loc(
-#     wrist_loc, pinky_loc, pointer_loc, thumb_loc, lens, bounds_list
-# )
-# print(raw_angles)
-# print(end_angles)
-# print(end_rot_matrix)
-# print(claw_agl)
+wrist_list = [
+    [lengths[1] + lengths[2] + lengths[3], 0, 0],  # wrist: right down,
+]
+
+pointer_pinky_thumb_list = [
+    [[1, 0, 0], [1, -1, 0], [0, 0, -1]],  # claw: right horizontal
+]
+
+combo_cords = []
+for n in range(len(wrist_list)):
+    wrist_cord = np.array(wrist_list[n])
+    adj_pp_list = [np.add(x, wrist_cord) for x in pointer_pinky_thumb_list[n]]
+    combo_cords.append([wrist_cord] + (adj_pp_list))
+
+combo_cords
+
+#%%
+adj_angle_list = []
+raw_angle_list = []
+for x in combo_cords:
+    raw_angles, adj_angles, end_rot_matrix, claw_agl = calculate_angles_given_joint_loc(
+        x[0], x[2], x[1], x[3], lengths, bounds_list
+    )
+    adj_angle_list.append(adj_angles)
+    raw_angle_list.append(raw_angles)
+
+print(np.array(end_rot_matrix))
+print(np.array(adj_angle_list))
+print(np.array(raw_angle_list))
+
+#%%
+test_angles = [0, 0, 0, 0, 180, 0]
+DH_table = return_dh_table(test_angles, lengths)
+homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
+end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
+end_rot_matrix
 # %%
