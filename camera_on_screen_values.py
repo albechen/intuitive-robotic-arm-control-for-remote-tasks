@@ -6,10 +6,10 @@ import pickle
 from src.camera_calibration.utils import DLT
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 
-# import serial
-# import struct
+import serial
+import struct
 
-# arduino_serial = serial.Serial("COM5", 9600)
+arduino_serial = serial.Serial("COM5", 9600)
 
 calibration_settings = {
     "camera0": 0,
@@ -33,7 +33,6 @@ def open_pickle(path):
 
 
 #%%
-
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
@@ -70,7 +69,7 @@ bounds_list = [
     {"min": 0, "max": 180},
     {"min": 0, "max": 180},
 ]
-lens = [8, 24.5, 23, 3, 5, 2]
+lens = [8, 23.2, 16.8, 2.8, 5, 6]
 
 
 def extract_x_y_z_cords(ih, iw, cords):
@@ -196,7 +195,10 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     # kpts_3d = []
 
     # initialize avg list for angles
-    angles_list_dict = {"left": [[0, 0, 0, 0, 0, 0, 0]], "right": [[0, 0, 0, 0, 0, 0, 0]]}
+    angles_list_dict = {
+        "left": [[0, 0, 0, 0, 0, 0, 0]],
+        "right": [[0, 0, 0, 0, 0, 0, 0]],
+    }
     num_to_avg = 10
 
     while 1:
@@ -373,18 +375,18 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
         left_angles = angles_dict["left"]["agl_list"]
         print(left_angles)
-        # arduino_serial.write(
-        #     struct.pack(
-        #         ">BBBBBBB",
-        #         left_angles[0],
-        #         left_angles[1],
-        #         left_angles[2],
-        #         left_angles[3],
-        #         left_angles[4],
-        #         left_angles[5],
-        #         left_angles[6],
-        #     )
-        # )
+        arduino_serial.write(
+            struct.pack(
+                ">BBBBBBB",
+                left_angles[0],
+                left_angles[1],
+                left_angles[2],
+                left_angles[3],
+                left_angles[4],
+                left_angles[5],
+                left_angles[6],
+            )
+        )
 
         cv.imshow("cam1", frame1)
         cv.imshow("cam0", frame0)

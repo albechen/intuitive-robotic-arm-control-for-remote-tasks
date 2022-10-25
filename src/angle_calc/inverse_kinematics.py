@@ -251,6 +251,17 @@ def get_rotation_matrix(vec2, vec1):
     return r[0].as_matrix()
 
 
+def z_rot_matrix(x):
+    x = np.deg2rad(x)
+    z_rot = [
+        [np.cos(x), -np.sin(x), 0],
+        [np.sin(x), np.cos(x), 0],
+        [0, 0, 1],
+    ]
+    z_rot = np.array([[round(y, 10) for y in x] for x in z_rot])
+    return z_rot
+
+
 def calc_rot_given_zx_vectors(z_vector, x_vector):
     # z_axis = np.array([0, 0, 1])
     # rot_z = get_rotation_matrix(z_vector, z_axis)
@@ -267,20 +278,20 @@ def calc_rot_given_zx_vectors(z_vector, x_vector):
     x_axis = np.array([1, 0, 0])
     rot_z = get_rotation_matrix(z_vector, z_axis)
     rotZ_xAxis = rot_z.dot(x_axis)
-    angle_between_x = angle_between(rotZ_xAxis, x_vector)
 
-    def z_rot_matrix(x):
-        x = np.deg2rad(x)
-        z_rot = [
-            [np.cos(x), -np.sin(x), 0],
-            [np.sin(x), np.cos(x), 0],
-            [0, 0, 1],
-        ]
-        z_rot = np.array([[round(y, 10) for y in x] for x in z_rot])
-        return z_rot
+    angle_between_x = angle_between(rotZ_xAxis, x_vector)
 
     rot_z_forX = z_rot_matrix(angle_between_x)
     rot_matrix = rot_z.dot(rot_z_forX)
+
+    check_xRot = [0, 0, 0] == [x - y for x, y in zip(x_vector, rot_matrix.dot(x_axis))]
+    check_zRot = [0, 0, 0] == [x - y for x, y in zip(z_vector, rot_matrix.dot(z_axis))]
+
+    if check_xRot == True and check_zRot == True:
+        pass
+    else:
+        rot_z_forX = z_rot_matrix(-angle_between_x)
+        rot_matrix = rot_z.dot(rot_z_forX)
 
     return rot_matrix
 
@@ -320,19 +331,19 @@ def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
     return pointer_vec, palm_vec, palm_vec_2
 
 
-def calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl):
+def calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, max_agl):
     thumb_vec = np.array(thumb_loc) - np.array(wrist_loc)
     pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
     joint_agl = int(round(angle_between(thumb_vec, pointer_vec)))
 
-    if joint_agl < closed_agl:
-        return 0
-    elif joint_agl == 999:
+    if joint_agl == 999:
         return 255
     elif joint_agl > max_agl:
+        return 0
+    elif joint_agl < 0:
         return max_agl
     else:
-        return joint_agl
+        return max_agl - joint_agl
 
 
 #%%
@@ -349,8 +360,10 @@ def bound_angles(raw_angles_list, bounds_list):
     agls = raw_angles_list.copy()
     agls = [int(round(x)) for x in agls]
 
+    agls[4] = agls[4] + 90
+
     for n in [0, 1, 2, 4]:
-        min_max_bound(agls[n], bounds_list[n])
+        agls[n] = min_max_bound(agls[n], bounds_list[n])
 
     if agls[3] < 0:
         agls[3] = 180 + agls[3]
@@ -372,9 +385,8 @@ def calculate_angles_given_joint_loc(
         wrist_loc, pinky_loc, pointer_loc
     )
 
-    closed_agl = 10
-    max_agl = 100
-    claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl)
+    max_agl = 45
+    claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, max_agl)
 
     arm_angles = calc_arm_angles(wrist_loc, lens)
 
@@ -400,11 +412,11 @@ def calculate_angles_given_joint_loc(
     angles = [0 if math.isnan(x) else x for x in angles]
 
     raw_angles = [round(x) for x in angles]
-    adj_angles = raw_angles  # bound_angles(angles, bounds_list)
+    adj_angles = bound_angles(angles, bounds_list)
 
     # with all angles can just calculate final angles and locations
     # mainly used for double checking
-    DH_table = return_dh_table(adj_angles, lens)
+    DH_table = return_dh_table(raw_angles, lens)
     homo_matrix_list = calc_homo_matrix(adj_angles, DH_table)
     end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
 
@@ -412,237 +424,234 @@ def calculate_angles_given_joint_loc(
 
 
 #%%
-lengths = [5, 8, 10, 2, 3, 1]
-a = lengths[0]
-b = lengths[1]
-c = lengths[2]
-d = lengths[3]
-e = lengths[4]
-f = lengths[5]
+# lengths = [5, 8, 10, 2, 3, 1]
+# a = lengths[0]
+# b = lengths[1]
+# c = lengths[2]
+# d = lengths[3]
+# e = lengths[4]
+# f = lengths[5]
 
-bounds_list = [
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 135},
-    {"min": 0, "max": 135},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-]
-
-wrist_list = [
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    # [0, c + d, a + b]
-]
-
-pointer_pinky_thumb_list = [
-    [[0, 0, 1], [0, 1, 0], [1, 0, 0]],  # up : horizontal
-    [[0, 0, 1], [1, 0, 0], [0, -1, 0]],  # up : vertical
-    [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],  # down : horizontal
-    [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],  # down : vertical
-    [[1, 0, 0], [0, 1, 0], [0, 0, -1]],  # right : horizontal
-    [[1, 0, 0], [0, 0, -1], [0, -1, 0]],  # right : vertical
-]
+# bounds_list = [
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 135},
+#     {"min": 0, "max": 135},
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 180},
+#     {"min": 0, "max": 180},
+# ]
 
 # wrist_list = [
 #     [b + c + d, 0, a],  # wrist: right down,
 #     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
 # ]
 
 # pointer_pinky_thumb_list = [
 #     [[0, 0, 1], [0, 1, 0], [1, 0, 0]],  # up : horizontal
+#     [[0, 0, 1], [1, 0, 0], [0, -1, 0]],  # up : vertical
 #     [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],  # down : horizontal
+#     [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],  # down : vertical
+#     [[1, 0, 0], [0, 1, 0], [0, 0, -1]],  # right : horizontal
+#     [[1, 0, 0], [0, 0, -1], [0, -1, 0]],  # right : vertical
+#     [[0, 1, 0], [0, 0, -1], [1, 0, 0]],  # front : horizontal
+#     [[0, 1, 0], [-1, 0, 0], [0, 0, -1]],  # front : vertical
 # ]
 
-combo_cords = []
-for n in range(len(wrist_list)):
-    wrist_cord = np.array(wrist_list[n])
-    adj_pp_list = [np.add(x, wrist_cord) for x in pointer_pinky_thumb_list[n]]
-    combo_cords.append([wrist_cord] + (adj_pp_list))
+# wrist_cord_add = [
+#     [0, 0, e + f],
+#     [0, 0, e + f],
+#     [0, 0, -(e + f)],
+#     [0, 0, -(e + f)],
+#     [(e + f), 0, 0],
+#     [(e + f), 0, 0],
+#     [0, (e + f), 0],
+#     [0, (e + f), 0],
+# ]
 
-combo_cords
+# end_cords_xyz = [np.array(x) + np.array(y) for x, y in zip(wrist_list, wrist_cord_add)]
 
-#%%
-adj_angle_list = []
-raw_angle_list = []
-for x in combo_cords:
-    raw_angles, adj_angles, end_rot_matrix, claw_agl = calculate_angles_given_joint_loc(
-        x[0], x[2], x[1], x[3], lengths, bounds_list
-    )
-    adj_angle_list.append(adj_angles)
-    raw_angle_list.append(raw_angles)
+# combo_cords = []
+# for n in range(len(wrist_list)):
+#     wrist_cord = np.array(wrist_list[n])
+#     adj_pp_list = [np.add(x, wrist_cord) for x in pointer_pinky_thumb_list[n]]
+#     combo_cords.append([wrist_cord] + (adj_pp_list))
 
-    print(np.array(end_rot_matrix))
+# #%%
+# adj_angle_list = []
+# raw_angle_list = []
+# for x, exp_cord in zip(combo_cords, end_cords_xyz):
+#     raw_angles, adj_angles, end_rot_matrix, claw_agl = calculate_angles_given_joint_loc(
+#         x[0], x[2], x[1], x[3], lengths, bounds_list
+#     )
+#     adj_angle_list.append(adj_angles)
+#     raw_angle_list.append(raw_angles)
+
+#     mtx = np.array(end_rot_matrix)
+#     end_cord = np.array([mtx[0, 3], mtx[1, 3], mtx[2, 3]])
+#     print((end_cord == exp_cord).all(), end_cord, exp_cord)
+
+#     # print(np.array(end_rot_matrix))
 
 # print(np.array(adj_angle_list))
-print(np.array(raw_angle_list))
+# print(np.array(raw_angle_list))
 
-#%%
-
-
-test_angles = [0, 0, 0, 0, 0, 0]
-DH_table = return_dh_table(test_angles, lengths)
-homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
-end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
-end_rot_matrix
+# #%%
+# lengths = [5, 8, 10, 2, 3, 1]
+# test_angles = [0, 0, 0, 0, 90, 0]
+# DH_table = return_dh_table(test_angles, lengths)
+# homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
+# end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
+# end_rot_matrix
 
 
 # %%
-wrist_loc, pointer_loc, pinky_loc, thumb_loc = combo_cords[4]
-# get inital vectors given just locaitons
-z_vector, x_vector, x_vector_2 = calc_x_z_vectors_from_joint_loc(
-    wrist_loc, pinky_loc, pointer_loc
-)
+# wrist_loc, pointer_loc, pinky_loc, thumb_loc = combo_cords[4]
+# # get inital vectors given just locaitons
+# z_vector, x_vector, x_vector_2 = calc_x_z_vectors_from_joint_loc(
+#     wrist_loc, pinky_loc, pointer_loc
+# )
 
-closed_agl = 10
-max_agl = 100
-claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl)
+# closed_agl = 10
+# max_agl = 100
+# claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc, closed_agl, max_agl)
 
-arm_angles = calc_arm_angles(wrist_loc, lengths)
+# arm_angles = calc_arm_angles(wrist_loc, lengths)
 
-## get wrist angle given z and x vectors
-# two options since can flip palm either way
-wrist_angles_list = []
-for x_vec in [x_vector, x_vector_2]:
-    wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vec)
-    wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lengths, wirst_rot_06)
-    wrist_angles_list.append(wrist_angles)
-
-
-# wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vector)
-
-z_axis = np.array([0, 0, 1])
-x_axis = np.array([1, 0, 0])
-rot_z = get_rotation_matrix(z_vector, z_axis)
-rotZ_xAxis = rot_z.dot(x_axis)
-angle_between_x = angle_between(rotZ_xAxis, x_vector)
+# ## get wrist angle given z and x vectors
+# # two options since can flip palm either way
+# wrist_angles_list = []
+# for x_vec in [x_vector, x_vector_2]:
+#     wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vec)
+#     wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lengths, wirst_rot_06)
+#     wrist_angles_list.append(wrist_angles)
 
 
-def z_rot_matrix(x):
-    x = np.deg2rad(x)
-    z_rot = [
-        [np.cos(x), -np.sin(x), 0],
-        [np.sin(x), np.cos(x), 0],
-        [0, 0, 1],
-    ]
-    z_rot = np.array([[round(y, 10) for y in x] for x in z_rot])
-    return z_rot
+# # wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vector)
+
+# z_axis = np.array([0, 0, 1])
+# x_axis = np.array([1, 0, 0])
+# rot_z = get_rotation_matrix(z_vector, z_axis)
+# rotZ_xAxis = rot_z.dot(x_axis)
 
 
-rot_z_forX = z_rot_matrix(angle_between_x)
-wirst_rot_06 = rot_z.dot(rot_z_forX)
+# angle_between_x = angle_between(rotZ_xAxis, x_vector)
+
+# rot_z_forX = z_rot_matrix(angle_between_x)
+# wirst_rot_06 = rot_z.dot(rot_z_forX)
+
+# check_xRot = [0, 0, 0] == [x - y for x, y in zip(x_vector, wirst_rot_06.dot(x_axis))]
+# check_zRot = [0, 0, 0] == [x - y for x, y in zip(z_vector, wirst_rot_06.dot(z_axis))]
+
+# if check_xRot == True and check_zRot == True:
+#     pass
+# else:
+#     rot_z_forX = z_rot_matrix(-angle_between_x)
+#     wirst_rot_06 = rot_z.dot(rot_z_forX)
 
 
-#%%
+# #%%
+# DH_table = return_dh_table(arm_angles + [0, 0, 0], lengths)
+
+# homo_matrix_list = calc_homo_matrix(arm_angles + [0, 0, 0], DH_table)
+
+# rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
+# inv_rot_03 = rot_03.transpose()
+# rot_36 = inv_rot_03.dot(wirst_rot_06)
+
+# print(z_vector, x_vector)
+# print(wirst_rot_06)
+# print(rot_03)
+# print(inv_rot_03)
+# print(rot_36)
+
+# z_axis = np.array([0, 0, 1])
+# x_axis = np.array([1, 0, 0])
+# print(
+#     wirst_rot_06.dot(x_axis),
+#     x_vector,
+#     [0, 0, 0] == [x - y for x, y in zip(x_vector, wirst_rot_06.dot(x_axis))],
+# )
+# print(
+#     wirst_rot_06.dot(z_axis),
+#     z_vector,
+#     [0, 0, 0] == [x - y for x, y in zip(z_vector, wirst_rot_06.dot(z_axis))],
+# )
+
+# if sum(1 for i in wrist_angles_list[0] if i >= 0) > sum(
+#     1 for i in wrist_angles_list[1] if i >= 0
+# ):
+#     wrist_angles = wrist_angles_list[0]
+# else:
+#     wrist_angles = wrist_angles_list[1]
+
+# print(wrist_angles)
+# #%%
+# # combine raw angles and adjust for negative values
+# # and out of bound angles
+
+# angles = arm_angles + wrist_angles
+# angles = [0 if math.isnan(x) else x for x in angles]
+
+# raw_angles = [round(x) for x in angles]
+# # adj_angles = bound_angles(angles, bounds_list)
+
+# # with all angles can just calculate final angles and locations
+# # mainly used for double checking
+# DH_table = return_dh_table(raw_angles, lengths)
+# homo_matrix_list = calc_homo_matrix(raw_angles, DH_table)
+# end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
+# print(end_rot_matrix)
+
+# # %%
+# def get_rotation_matrix(vec2, vec1):
+#     """get rotation matrix between two vectors using scipy"""
+#     vec1 = vec1 / np.linalg.norm(vec1)
+#     vec2 = vec2 / np.linalg.norm(vec2)
+
+#     vec1 = np.reshape(vec1, (1, -1))
+#     vec2 = np.reshape(vec2, (1, -1))
+
+#     r = R.align_vectors(vec2, vec1)
+#     return r[0].as_matrix()
+
+
+# z_axis = np.array([0, 0, 1])
+# rot_z = get_rotation_matrix(z_vector, z_axis)
+
 # inv_rot_z = get_rotation_matrix(z_axis, z_vector)
 # inv_x_vector = inv_rot_z.dot(x_vector)
+
 # x_axis = np.array([1, 0, 0])
-# rot_x = get_rotation_matrix(x_axis, inv_x_vector)
-# wirst_rot_06 = rot_z.dot(rot_x)
+# rot_x = get_rotation_matrix(x_vector, inv_x_vector)
+
+# rot_matrix = np.dot(rot_z, rot_x)
+
+# [print(x) for x in [rot_z, inv_rot_z, rot_x, rot_matrix]]
+# print(rot_matrix.dot(x_axis), x_vector)
+# print(rot_matrix.dot(z_axis), z_vector)
 
 
-DH_table = return_dh_table(arm_angles + [0, 0, 0], lengths)
+# DH_table = return_dh_table(arm_angles + [0, 0, 0], lengths)
 
-homo_matrix_list = calc_homo_matrix(arm_angles + [0, 0, 0], DH_table)
+# homo_matrix_list = calc_homo_matrix(arm_angles + [0, 0, 0], DH_table)
 
-rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
-inv_rot_03 = rot_03.transpose()
-rot_36 = inv_rot_03.dot(wirst_rot_06)
-
-print(z_vector, x_vector)
-print(wirst_rot_06)
-print(rot_03)
-print(inv_rot_03)
-print(rot_36)
-
-z_axis = np.array([0, 0, 1])
-x_axis = np.array([1, 0, 0])
-print(
-    wirst_rot_06.dot(x_axis),
-    x_vector,
-    [0, 0, 0] == [x - y for x, y in zip(x_vector, wirst_rot_06.dot(x_axis))],
-)
-print(
-    wirst_rot_06.dot(z_axis),
-    z_vector,
-    [0, 0, 0] == [x - y for x, y in zip(z_vector, wirst_rot_06.dot(z_axis))],
-)
-
-if sum(1 for i in wrist_angles_list[0] if i >= 0) > sum(
-    1 for i in wrist_angles_list[1] if i >= 0
-):
-    wrist_angles = wrist_angles_list[0]
-else:
-    wrist_angles = wrist_angles_list[1]
-
-print(wrist_angles)
-#%%
-# combine raw angles and adjust for negative values
-# and out of bound angles
-
-angles = arm_angles + wrist_angles
-angles = [0 if math.isnan(x) else x for x in angles]
-
-raw_angles = [round(x) for x in angles]
-# adj_angles = bound_angles(angles, bounds_list)
-
-# with all angles can just calculate final angles and locations
-# mainly used for double checking
-DH_table = return_dh_table(raw_angles, lengths)
-homo_matrix_list = calc_homo_matrix(raw_angles, DH_table)
-end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
-print(end_rot_matrix)
-
-# %%
-def get_rotation_matrix(vec2, vec1):
-    """get rotation matrix between two vectors using scipy"""
-    vec1 = vec1 / np.linalg.norm(vec1)
-    vec2 = vec2 / np.linalg.norm(vec2)
-
-    vec1 = np.reshape(vec1, (1, -1))
-    vec2 = np.reshape(vec2, (1, -1))
-
-    r = R.align_vectors(vec2, vec1)
-    return r[0].as_matrix()
-
-
-z_axis = np.array([0, 0, 1])
-rot_z = get_rotation_matrix(z_vector, z_axis)
-
-inv_rot_z = get_rotation_matrix(z_axis, z_vector)
-inv_x_vector = inv_rot_z.dot(x_vector)
-
-x_axis = np.array([1, 0, 0])
-rot_x = get_rotation_matrix(x_vector, inv_x_vector)
-
-rot_matrix = np.dot(rot_z, rot_x)
-
-[print(x) for x in [rot_z, inv_rot_z, rot_x, rot_matrix]]
-print(rot_matrix.dot(x_axis), x_vector)
-print(rot_matrix.dot(z_axis), z_vector)
-
-
-DH_table = return_dh_table(arm_angles + [0, 0, 0], lengths)
-
-homo_matrix_list = calc_homo_matrix(arm_angles + [0, 0, 0], DH_table)
-
-rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
-inv_rot_03 = np.linalg.inv(rot_03)
-rot_36 = np.dot(inv_rot_03, rot_matrix)
-
-# %%
-rot_z = get_rotation_matrix(z_axis, z_vector)
-
-rot_z.dot(x_vector)
-# %%
-rot_matrix.dot(z_axis)
-# %%
-np.array([[0, 0, 1], [0, -1, 0], [1, 0, 0]]).dot(x_axis)
-# %%
+# rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
+# inv_rot_03 = np.linalg.inv(rot_03)
+# rot_36 = np.dot(inv_rot_03, rot_matrix)
 
 
 #%%
