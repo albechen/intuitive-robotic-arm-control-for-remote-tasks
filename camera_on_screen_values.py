@@ -3,7 +3,7 @@ import cv2 as cv
 import mediapipe as mp
 import numpy as np
 import pickle
-from src.camera_calibration.utils import DLT
+from src.angle_calc.utils import DLT
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 
 import serial
