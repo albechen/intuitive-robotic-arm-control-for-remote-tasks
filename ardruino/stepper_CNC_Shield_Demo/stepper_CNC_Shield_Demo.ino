@@ -20,7 +20,7 @@ void setup()
   pinMode(DirZ, OUTPUT);
 }
 
-int full_steps = 200 * 20;
+int full_steps = 200;
 void loop()
 {
   // digitalWrite(DirX, HIGH); // set direction, HIGH for CCW, LOW for CW
@@ -43,25 +43,25 @@ void loop()
   // }
   // delay(1000); // delay for 1 second
 
-  // digitalWrite(DirY, HIGH); // set direction, HIGH for CCW, LOW for CW
-  // for (int x = 0; x < full_steps; x++)
-  // { // loop for 200 steps
-  //   digitalWrite(StepY, HIGH);
-  //   delayMicroseconds(700);
-  //   digitalWrite(StepY, LOW);
-  //   delayMicroseconds(700);
-  // }
-  // delay(1000); // delay for 1 second
-
-  // digitalWrite(DirY, LOW);
-  // for (int x = 0; x < full_steps; x++)
-  // { // loop for 200 steps
-  //   digitalWrite(StepY, HIGH);
-  //   delayMicroseconds(700);
-  //   digitalWrite(StepY, LOW);
-  //   delayMicroseconds(700);
-  // }
-  // delay(1000); // delay for 1 second
+//   digitalWrite(DirY, HIGH); // set direction, HIGH for CCW, LOW for CW
+//   for (int x = 0; x < full_steps; x++)
+//   { // loop for 200 steps
+//     digitalWrite(StepY, HIGH);
+//     delayMicroseconds(700);
+//     digitalWrite(StepY, LOW);
+//     delayMicroseconds(700);
+//   }
+//   delay(1000); // delay for 1 second
+//
+//   digitalWrite(DirY, LOW);
+//   for (int x = 0; x < full_steps; x++)
+//   { // loop for 200 steps
+//     digitalWrite(StepY, HIGH);
+//     delayMicroseconds(700);
+//     digitalWrite(StepY, LOW);
+//     delayMicroseconds(700);
+//   }
+//   delay(1000); // delay for 1 second
 
   // digitalWrite(DirZ, HIGH);
   // for (int x = 0; x < full_steps; x++)

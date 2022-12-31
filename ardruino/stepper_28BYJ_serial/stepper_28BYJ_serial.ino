@@ -4,6 +4,7 @@
 AccelStepper stepper1(AccelStepper::FULL4WIRE, 23, 27, 25, 29);
 AccelStepper stepper2(AccelStepper::FULL4WIRE, 33, 37, 35, 39);
 AccelStepper stepper3(AccelStepper::FULL4WIRE, 43, 47, 45, 49);
+AccelStepper stepperclaw(AccelStepper::FULL4WIRE, 53, 57, 55, 59);
 
 int calculate_target_steps(int stepper_steps, int target_degree)
 {
@@ -13,24 +14,6 @@ int calculate_target_steps(int stepper_steps, int target_degree)
 }
 
 const int stepper_steps = 2048;
-int target_array[3][3] = {{
-                              0,
-                              0,
-                              0,
-                          },
-                          {
-                              90,
-                              90,
-                              90,
-                          },
-                          {
-                              135,
-                              -45,
-                              45,
-                          }};
-
-//                       {0, 0, 0,},
-int target_count = 0;
 
 void setup()
 {
@@ -43,7 +26,7 @@ void setup()
 void loop()
 {
 
-    if (Serial.available() > 0)
+    while (Serial.available() > 0)
     {
         stepper1.moveTo(calculate_target_steps(stepper_steps, target_array[0][0]));
         stepper1.setSpeed(400.0);

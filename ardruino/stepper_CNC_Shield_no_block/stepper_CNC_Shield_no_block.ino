@@ -23,30 +23,37 @@ void setup()
   pinMode(DirZ, OUTPUT);
 }
 
-const int stepper_steps = 200 * 6;
-int target_array[4][2] = {
+const int yz_stepper_steps = 200 * 6 * 6;
+const int x_stepper_steps = 200 * 20;
+int target_array[4][3] = {
     {
         0,
-        20,
-    },
-    {
-        90,
-        20,
-    },
-    {
-        90,
-        90,
+        45,
+        -45,
     },
     {
         45,
-        45,
+        90,
+        -90,
+    },
+    {
+        -45,
+        75,
+        -70,
+    },
+    {
+        0,
+        0,
+        0,
     },
 };
 
 int stepsPos_x = 0;
-int stepsPos_z = calculate_target_steps(stepper_steps, 20);
+int stepsPos_y = 0;
+int stepsPos_z = 0;
 
 int dirInc_x = 1;
+int dirInc_y = 1;
 int dirInc_z = 1;
 // set direction, HIGH for CCW, LOW for CW
 void loop()
@@ -55,7 +62,7 @@ void loop()
   {
     for (int target_num = 0; target_num < 4; ++target_num)
     {
-      int stepsTarget_x = calculate_target_steps(stepper_steps, target_array[target_num][0]);
+      int stepsTarget_x = calculate_target_steps(x_stepper_steps, target_array[target_num][0]);
       int stepsToMove_x = stepsTarget_x - stepsPos_x;
       if (stepsToMove_x > 0)
       {
@@ -68,7 +75,20 @@ void loop()
         digitalWrite(DirX, LOW); // CW
       }
 
-      int stepsTarget_z = calculate_target_steps(stepper_steps, target_array[target_num][1]);
+      int stepsTarget_y = calculate_target_steps(yz_stepper_steps, target_array[target_num][1]);
+      int stepsToMove_y = stepsTarget_y - stepsPos_y;
+      if (stepsToMove_y > 0)
+      {
+        dirInc_y = 1;
+        digitalWrite(DirY, HIGH); // CCW
+      }
+      else
+      {
+        dirInc_y = -1;
+        digitalWrite(DirY, LOW); // CW
+      }
+
+      int stepsTarget_z = calculate_target_steps(yz_stepper_steps, target_array[target_num][2]);
       int stepsToMove_z = stepsTarget_z - stepsPos_z;
 
       if (stepsToMove_z > 0)
@@ -83,15 +103,20 @@ void loop()
       }
 
       int absStepsToMove_x = abs(stepsToMove_x);
+      int absStepsToMove_y = abs(stepsToMove_y);
       int absStepsToMove_z = abs(stepsToMove_z);
 
-      int max_move = max(absStepsToMove_x, absStepsToMove_z);
+      int max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
 
       for (int x = 0; x <= max_move; x++)
       { // loop for 200 steps
         if (x < absStepsToMove_x)
         {
           digitalWrite(StepX, HIGH);
+        }
+        if (x < absStepsToMove_y)
+        {
+          digitalWrite(StepY, HIGH);
         }
         if (x < absStepsToMove_z)
         {
@@ -100,10 +125,17 @@ void loop()
 
         delayMicroseconds(700);
 
+        
+
         if (x < absStepsToMove_x)
         {
           digitalWrite(StepX, LOW);
           stepsPos_x += dirInc_x;
+        }
+        if (x < absStepsToMove_y)
+        {
+          digitalWrite(StepY, LOW);
+          stepsPos_y += dirInc_y;
         }
         if (x < absStepsToMove_z)
         {
@@ -145,7 +177,7 @@ void loop()
 
   else
   {
-    int stepsTarget_x = calculate_target_steps(stepper_steps, 0);
+    int stepsTarget_x = calculate_target_steps(x_stepper_steps, 0);
     int stepsToMove_x = stepsTarget_x - stepsPos_x;
     if (stepsToMove_x > 0)
     {
@@ -158,7 +190,20 @@ void loop()
       digitalWrite(DirX, LOW); // CW
     }
 
-    int stepsTarget_z = calculate_target_steps(stepper_steps, 20);
+    int stepsTarget_y = calculate_target_steps(yz_stepper_steps, 0);
+    int stepsToMove_y = stepsTarget_y - stepsPos_y;
+    if (stepsToMove_y > 0)
+    {
+      dirInc_y = 1;
+      digitalWrite(DirY, HIGH); // CCW
+    }
+    else
+    {
+      dirInc_y = -1;
+      digitalWrite(DirY, LOW); // CW
+    }
+
+    int stepsTarget_z = calculate_target_steps(yz_stepper_steps, 0);
     int stepsToMove_z = stepsTarget_z - stepsPos_z;
 
     if (stepsToMove_z > 0)
@@ -173,15 +218,20 @@ void loop()
     }
 
     int absStepsToMove_x = abs(stepsToMove_x);
+    int absStepsToMove_y = abs(stepsToMove_y);
     int absStepsToMove_z = abs(stepsToMove_z);
 
-    int max_move = max(absStepsToMove_x, absStepsToMove_z);
+    int max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
 
     for (int x = 0; x <= max_move; x++)
     { // loop for 200 steps
       if (x < absStepsToMove_x)
       {
         digitalWrite(StepX, HIGH);
+      }
+      if (x < absStepsToMove_y)
+      {
+        digitalWrite(StepY, HIGH);
       }
       if (x < absStepsToMove_z)
       {
@@ -190,10 +240,17 @@ void loop()
 
       delayMicroseconds(700);
 
+      
+
       if (x < absStepsToMove_x)
       {
         digitalWrite(StepX, LOW);
         stepsPos_x += dirInc_x;
+      }
+      if (x < absStepsToMove_y)
+      {
+        digitalWrite(StepY, LOW);
+        stepsPos_y += dirInc_y;
       }
       if (x < absStepsToMove_z)
       {
