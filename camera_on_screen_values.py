@@ -9,7 +9,7 @@ from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 import serial
 import struct
 
-arduino_serial = serial.Serial("COM5", 9600)
+arduino_serial = serial.Serial("COM6", 115200)
 
 calibration_settings = {
     "camera0": 0,
@@ -33,8 +33,8 @@ def open_pickle(path):
 
 
 #%%
-mp_drawing = mp.solutions.drawing_utils
-mp_drawing_styles = mp.solutions.drawing_styles
+# mp_drawing = mp.solutions.drawing_utils
+# mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
 frame_shape = [1080, 1920]
@@ -279,6 +279,8 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 new_origin = left_origin
             elif dir == "right":
                 new_origin = right_origin
+            else:
+                new_origin = [0, 0, 0]
 
             for joint in joint_list:
 
@@ -377,7 +379,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         print(left_angles)
         arduino_serial.write(
             struct.pack(
-                ">BBBBBBB",
+                "7h",
                 left_angles[0],
                 left_angles[1],
                 left_angles[2],

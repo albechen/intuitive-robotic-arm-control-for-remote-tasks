@@ -1,73 +1,87 @@
 #include <AccelStepper.h>
+#include <MultiStepper.h>
+
+const int num_angles = 7;
+int pos_list[num_angles];                          // this value is the upgratable data
+byte *ddata = reinterpret_cast<byte *>(&pos_list); // pointer for transferData()
+size_t pcDataLen = sizeof(pos_list);
+bool newData = false;
 
 // Define some steppers and the pins the will use
-AccelStepper stepper1(AccelStepper::FULL4WIRE, 23, 27, 25, 29);
-AccelStepper stepper2(AccelStepper::FULL4WIRE, 33, 37, 35, 39);
-AccelStepper stepper3(AccelStepper::FULL4WIRE, 43, 47, 45, 49);
-AccelStepper stepperclaw(AccelStepper::FULL4WIRE, 53, 57, 55, 59);
+AccelStepper sm1(AccelStepper::FULL4WIRE, 23, 27, 25, 29);
+AccelStepper sm2(AccelStepper::FULL4WIRE, 33, 37, 35, 39);
+AccelStepper sm3(AccelStepper::FULL4WIRE, 43, 47, 45, 49);
+AccelStepper sm4(AccelStepper::FULL4WIRE, 53, 57, 55, 59);
 
-int calculate_target_steps(int stepper_steps, int target_degree)
+int calculate_target_steps(int steps_fullTurn, int target_degree)
 {
-    long large_num = (long)target_degree * (long)stepper_steps;
-    long stepper_fraction = large_num / 360;
+    long large_num = (long)target_degree * (long)steps_fullTurn;
+    long stepper_fraction = large_num / 3600;
     return lround(stepper_fraction);
 }
 
-const int stepper_steps = 2048;
+const int steps_28BYJ = 2048;
+const int steps_nema17_p = 200 * 2 * 6 * 6;
+const int steps_nema17_c = 200 * 2 * 20;
+MultiStepper steppers;
 
 void setup()
 {
-    Serial.begin(9600);
-    stepper1.setMaxSpeed(1000.0);
-    stepper2.setMaxSpeed(1000.0);
-    stepper3.setMaxSpeed(1000.0);
+    Serial.begin(115200);
+
+    sm1.setMaxSpeed(200.0);
+    sm1.setAcceleration(100.0);
+
+    sm2.setMaxSpeed(200.0);
+    sm2.setAcceleration(100.0);
+
+    sm3.setMaxSpeed(200.0);
+    sm3.setAcceleration(100.0);
+
+    sm4.setMaxSpeed(200.0);
+    sm4.setAcceleration(100.0);
+
+    steppers.addStepper(sm1);
+    steppers.addStepper(sm2);
+    steppers.addStepper(sm3);
+    steppers.addStepper(sm4);
+}
+
+void checkForNewData()
+{
+    if (Serial.available() >= pcDataLen && newData == false)
+    {
+        byte inByte;
+        for (byte n = 0; n < pcDataLen; n++)
+        {
+            ddata[n] = Serial.read();
+        }
+        while (Serial.available() > 0)
+        { // now make sure there is no other data in the buffer
+            byte dumpByte = Serial.read();
+            Serial.println(dumpByte);
+        }
+        newData = true;
+    }
 }
 
 void loop()
 {
-
-    while (Serial.available() > 0)
+    checkForNewData();
+    if (newData == true)
     {
-        stepper1.moveTo(calculate_target_steps(stepper_steps, target_array[0][0]));
-        stepper1.setSpeed(400.0);
-        stepper1.runSpeedToPosition();
-
-        stepper2.moveTo(calculate_target_steps(stepper_steps, target_array[0][1]));
-        stepper2.setSpeed(400.0);
-        stepper2.runSpeedToPosition();
-
-        stepper3.moveTo(calculate_target_steps(stepper_steps, target_array[0][2]));
-        stepper3.setSpeed(400.0);
-        stepper3.runSpeedToPosition();
+        newData = false;
     }
 
-    else
-    {
-        stepper1.moveTo(calculate_target_steps(stepper_steps, target_array[target_count][0]));
-        stepper1.setSpeed(400.0);
-        stepper1.runSpeedToPosition();
+    stepper.moveTo(pos_list);
+    stepper.run();
 
-        stepper2.moveTo(calculate_target_steps(stepper_steps, target_array[target_count][1]));
-        stepper2.setSpeed(400.0);
-        stepper2.runSpeedToPosition();
-
-        stepper3.moveTo(calculate_target_steps(stepper_steps, target_array[target_count][2]));
-        stepper3.setSpeed(400.0);
-        stepper3.runSpeedToPosition();
-
-        if (stepper1.distanceToGo() == 0 && stepper2.distanceToGo() == 0 && stepper3.distanceToGo() == 0)
-        {
-
-            delay(500);
-
-            if (target_count == 2)
-            {
-                target_count = 0;
-            }
-            else
-            {
-                target_count += 1;
-            }
-        }
-    }
+    // else
+    // {
+    //     for (int i=0, i<num_angles, i++){
+    //         pos_list[i] = 0;
+    //     }
+    //     stepper.moveTo(pos_list);
+    //     stepper.run();
+    // }
 }
