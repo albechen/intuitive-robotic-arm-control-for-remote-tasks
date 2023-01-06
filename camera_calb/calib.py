@@ -10,7 +10,6 @@ import pickle
 # set path to current dierectory
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 # This will contain the calibration settings from the calibration_settings.yaml file
-calibration_settings = {}
 
 
 def open_pickle(path):
@@ -98,7 +97,7 @@ def save_frames_single_camera(camera_name):
     start = False
     saved_count = 0
 
-    while 1:
+    while True:
 
         ret, frame = cap.read()
         if ret == False:
@@ -106,7 +105,9 @@ def save_frames_single_camera(camera_name):
             print("No video data received from camera. Exiting...")
             quit()
 
-        frame_small = cv.resize(frame, None, fx=1 / view_resize, fy=1 / view_resize)
+        frame_small = cv.resize(
+            frame, (width, height), fx=1 / view_resize, fy=1 / view_resize
+        )
 
         if not start:
             cv.putText(
@@ -142,7 +143,9 @@ def save_frames_single_camera(camera_name):
 
             # save the frame when cooldown reaches 0.
             if cooldown <= 0:
-                savename = "frames/" + camera_name + "_" + str(saved_count) + ".png"
+                savename = os.path.join(
+                    "frames/", camera_name + "_" + str(saved_count) + ".png"
+                )
                 cv.imwrite(savename, frame)
                 saved_count += 1
                 cooldown = cooldown_time
@@ -245,16 +248,12 @@ def calibrate_camera_for_intrinsic_parameters(images_prefix):
 
 
 # open both cameras and take calibration frames
-def save_frames_two_cams(
-    camera0_name,
-    camera1_name,
-    prefix="",
-    number_to_save=calibration_settings["stereo_calibration_frames"],
-):
+def save_frames_two_cams(camera0_name, camera1_name):
 
     # settings for taking data
     view_resize = calibration_settings["view_resize"]
     cooldown_time = calibration_settings["cooldown"]
+    number_to_save = calibration_settings["stereo_calibration_frames"]
 
     # open the video streams
     cap0 = cv.VideoCapture(calibration_settings[camera0_name])
@@ -271,7 +270,7 @@ def save_frames_two_cams(
     cooldown = cooldown_time
     start = False
     saved_count = 0
-    while 1:
+    while True:
 
         ret0, frame0 = cap0.read()
         ret1, frame1 = cap1.read()
@@ -281,10 +280,10 @@ def save_frames_two_cams(
             quit()
 
         frame0_small = cv.resize(
-            frame0, None, fx=1.0 / view_resize, fy=1.0 / view_resize
+            frame0, (width, height), fx=1.0 / view_resize, fy=1.0 / view_resize
         )
         frame1_small = cv.resize(
-            frame1, None, fx=1.0 / view_resize, fy=1.0 / view_resize
+            frame1, (width, height), fx=1.0 / view_resize, fy=1.0 / view_resize
         )
 
         if not start:
@@ -349,23 +348,13 @@ def save_frames_two_cams(
 
             # save the frame when cooldown reaches 0.
             if cooldown <= 0:
-                savename = (
-                    "frames_pair/"
-                    + camera0_name
-                    + "_"
-                    + prefix
-                    + str(saved_count)
-                    + ".png"
+                savename = os.path.join(
+                    "frames_pair/", camera0_name + "_" + str(saved_count) + ".png"
                 )
                 cv.imwrite(savename, frame0)
 
-                savename = (
-                    "frames_pair/"
-                    + camera1_name
-                    + "_"
-                    + prefix
-                    + str(saved_count)
-                    + ".png"
+                savename = os.path.join(
+                    "frames_pair/", camera1_name + "_" + str(saved_count) + ".png"
                 )
                 cv.imwrite(savename, frame1)
 
@@ -565,7 +554,7 @@ def check_calibration(
     cap1.set(3, width)
     cap1.set(4, height)
 
-    while 1:
+    while True:
 
         ret0, frame0 = cap0.read()
         ret1, frame1 = cap1.read()
@@ -626,6 +615,7 @@ def get_world_space_origin(cmtx, dist, img_path):
         1,
     )
     cv.imshow("img", frame)
+
     k = cv.waitKey(-1)
     if k == 27:
         cv.destroyAllWindows()
@@ -696,6 +686,11 @@ cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
 save_frames_two_cams("camera0", "camera1")  # save simultaneous frames
 
 #%%
+# images_prefix = "frames/camera0*"
+# cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_p refix)
+# images_prefix = "frames/camera1*"
+# cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
+
 """Step4. Use paired calibration pattern frames to obtain camera0 to camera1 rotation and translation"""
 frames_prefix_c0 = "frames_pair/camera0*"
 frames_prefix_c1 = "frames_pair/camera1*"
@@ -717,6 +712,24 @@ camera0_data = [cmtx0, dist0, R0, T0]
 camera1_data = [cmtx1, dist1, R1, T1]
 check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=60.0)
 
+#%%
+param_dict = {
+    "cam0": {
+        "mtx": cmtx0,
+        "dist": dist0,
+        "R": R0,
+        "T": T0,
+        "P": P0,
+    },
+    "cam1": {
+        "mtx": cmtx1,
+        "dist": dist1,
+        "R": R1,
+        "T": T1,
+        "P": P1,
+    },
+}
+replace_pickle("camera_parameters/cam_params.pkl", param_dict)
 #%%
 # """Optional. Define a different origin point and save the calibration data"""
 # save_frames_two_cams("camera0", "camera1", "world", 1)
@@ -748,22 +761,5 @@ check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=60.0
 # camera1_data = [cmtx1, dist1, R_W1, T_W1]
 # check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=0)
 
-#%%
-param_dict = {
-    "cam0": {
-        "mtx": cmtx0,
-        "dist": dist0,
-        "R": R0,
-        "T": T0,
-        "P": P0,
-    },
-    "cam1": {
-        "mtx": cmtx1,
-        "dist": dist1,
-        "R": R1,
-        "T": T1,
-        "P": P1,
-    },
-}
-replace_pickle("camera_parameters/cam_params.pkl", param_dict)
+
 # %%

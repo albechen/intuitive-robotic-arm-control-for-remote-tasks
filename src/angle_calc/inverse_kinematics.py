@@ -4,7 +4,7 @@ import math
 from scipy.spatial.transform import Rotation as R
 
 
-def law_of_cos(e1, e2, opp):
+def law_of_cos(e1: float, e2: float, opp: float) -> float:
     ratio = (e1**2 + e2**2 - opp**2) / (2 * e1 * e2)
     if ratio >= -1 and ratio <= 1:
         opp_angle = np.arccos(ratio)
@@ -13,11 +13,11 @@ def law_of_cos(e1, e2, opp):
         return 0
 
 
-def calc_arm_angles(END_CORD, lens):
+def calc_arm_angles(END_CORD: list, lens: list) -> list:
     X, Y, Z = END_CORD[0], END_CORD[1], END_CORD[2]
 
     if X == 0 and Y == 0:
-        return [0, 0, 0]
+        return [-999, -999, -999]
 
     else:
         theta_1 = np.arcsin(Y / (X**2 + Y**2) ** 0.5)
@@ -36,7 +36,9 @@ def calc_arm_angles(END_CORD, lens):
     return arm_angles
 
 
-def calc_series_rotation(homo_matrix_list, first_value, last_value):
+def calc_series_rotation(
+    homo_matrix_list: list, first_value: int, last_value: int
+) -> np.ndarray:
     first_matrix = True
     overall_rot_matrix = np.array([[], []])
     homo_matrix_slice = homo_matrix_list[first_value:last_value]
@@ -52,10 +54,10 @@ def calc_series_rotation(homo_matrix_list, first_value, last_value):
     return overall_rot_matrix
 
 
-def calc_homo_matrix(angles, DH_table):
+def calc_homo_matrix(angles: list, DH_table: list) -> list:
 
     num_joints = len(angles)
-    homo_matrix_list = [0] * num_joints
+    homo_matrix_list = [np.array(0)] * num_joints
 
     for n in range(num_joints):
         theta, alpha, r, d = DH_table[n]
@@ -84,7 +86,6 @@ def calc_homo_matrix(angles, DH_table):
             [0, 0, 0, 1],
         ]
         homo_matrix_list[n] = np.array(homo_matrix)
-
     return homo_matrix_list
 
 
@@ -98,7 +99,9 @@ def calc_homo_matrix(angles, DH_table):
 #         [angles[5] + 0, 0, 0, lens[4] + lens[5]],
 #     ]
 #     return DH_table
-def return_dh_table(angles, lens):
+
+
+def return_dh_table(angles: list, lens: list) -> list:
     DH_table = [
         [angles[0] + 0, 90, 0, lens[0]],
         [angles[1] + 0, 180, lens[1], 0],
@@ -110,7 +113,7 @@ def return_dh_table(angles, lens):
     return DH_table
 
 
-def calc_wirst_rot_matrix(wrist_angles):
+def calc_wirst_rot_matrix(wrist_angles: list) -> np.ndarray:
     wrist_angles_rad = [np.radians(x) for x in wrist_angles]
     agl_z1, agl_y, agl_z12 = wrist_angles_rad
 
@@ -174,7 +177,7 @@ def calc_wirst_rot_matrix(wrist_angles):
 #     return [np.degrees(theta_4), np.degrees(theta_5), np.degrees(theta_6)]
 
 
-def calc_wrist_angles(arm_angles, lens, rot_06):
+def calc_wrist_angles(arm_angles: list, lens: list, rot_06: list) -> list:
     # https://www.mecharithm.com/explicit-representations-for-the-orientation-euler-angles/
     DH_table = return_dh_table(arm_angles, lens)
 
@@ -240,7 +243,7 @@ def calc_wrist_angles(arm_angles, lens, rot_06):
 #     return R
 
 
-def get_rotation_matrix(vec2, vec1):
+def get_rotation_matrix(vec2: np.ndarray, vec1: np.ndarray) -> np.ndarray:
     """get rotation matrix between two vectors using scipy"""
 
     vec1 = vec1 / np.linalg.norm(vec1)
@@ -253,7 +256,7 @@ def get_rotation_matrix(vec2, vec1):
     return r[0].as_matrix()
 
 
-def z_rot_matrix(x):
+def z_rot_matrix(x: float) -> np.ndarray:
     x = np.deg2rad(x)
     z_rot = [
         [np.cos(x), -np.sin(x), 0],
@@ -264,7 +267,29 @@ def z_rot_matrix(x):
     return z_rot
 
 
-def calc_rot_given_zx_vectors(z_vector, x_vector):
+def unit_vector(vector: np.ndarray) -> np.ndarray:
+    """Returns the unit vector of the vector."""
+    return vector / np.linalg.norm(vector)
+
+
+def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
+    """Returns the angle in radians between vectors 'v1' and 'v2'::
+
+    >>> angle_between((1, 0, 0), (0, 1, 0))
+    1.5707963267948966
+    >>> angle_between((1, 0, 0), (1, 0, 0))
+    0.0
+    >>> angle_between((1, 0, 0), (-1, 0, 0))
+    3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    deg = np.rad2deg(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
+
+    return deg
+
+
+def calc_rot_given_zx_vectors(z_vector: np.ndarray, x_vector: np.ndarray) -> list:
     # z_axis = np.array([0, 0, 1])
     # rot_z = get_rotation_matrix(z_vector, z_axis)
 
@@ -299,29 +324,9 @@ def calc_rot_given_zx_vectors(z_vector, x_vector):
 
 
 #%%
-def unit_vector(vector):
-    """Returns the unit vector of the vector."""
-    return vector / np.linalg.norm(vector)
-
-
-def angle_between(v1, v2):
-    """Returns the angle in radians between vectors 'v1' and 'v2'::
-
-    >>> angle_between((1, 0, 0), (0, 1, 0))
-    1.5707963267948966
-    >>> angle_between((1, 0, 0), (1, 0, 0))
-    0.0
-    >>> angle_between((1, 0, 0), (-1, 0, 0))
-    3.141592653589793
-    """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    deg = np.rad2deg(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
-
-    return deg
-
-
-def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
+def calc_x_z_vectors_from_joint_loc(
+    wrist_loc: list, pinky_loc: list, pointer_loc: list
+) -> tuple:
     pinky_vec = np.array(pinky_loc) - np.array(wrist_loc)
     pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
     palm_vec = np.cross(pinky_vec, pointer_vec)
@@ -329,20 +334,19 @@ def calc_x_z_vectors_from_joint_loc(wrist_loc, pinky_loc, pointer_loc):
     return pointer_vec, palm_vec
 
 
-def calc_claw_angle(wrist_loc, pointer_loc, thumb_loc):
+def calc_claw_angle(wrist_loc: list, pointer_loc: list, thumb_loc: list) -> float:
     thumb_vec = np.array(thumb_loc) - np.array(wrist_loc)
     pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
     joint_agl = angle_between(thumb_vec, pointer_vec)
 
     return joint_agl
 
-
 #%%
 def bound_half_circle(agl: float) -> float:
     return_agl = agl
 
-    if agl == 999:
-        return_agl = 999
+    if agl == -999:
+        return_agl = -999
 
     if agl < -180:
         return_agl = agl + 360
@@ -355,8 +359,8 @@ def bound_half_circle(agl: float) -> float:
 def bound_min_max(agl: float, bounds: dict) -> float:
     return_agl = agl
 
-    if agl == 999:
-        return_agl = 999
+    if agl == -999:
+        return_agl = -999
 
     if agl < bounds["min"]:
         return_agl = bounds["min"]
@@ -377,9 +381,10 @@ def bound_angles(raw_angles: list, bounds_list: list) -> list:
     return agls
 
 
-def calc_alt_wirst_angles(raw_angles, bounds_list):
+def calc_alt_wirst_angles(raw_angles: list, bounds_list: list) -> list:
 
     agls = [bound_half_circle(agl) for agl in raw_angles]
+    agls = raw_angles
     agls_2 = agls.copy()
 
     if agls_2[5] < 0:
@@ -415,8 +420,13 @@ def calc_alt_wirst_angles(raw_angles, bounds_list):
 
 
 def calculate_angles_given_joint_loc(
-    wrist_loc, pinky_loc, pointer_loc, thumb_loc, lens, bounds_list
-):
+    wrist_loc: list,
+    pinky_loc: list,
+    pointer_loc: list,
+    thumb_loc: list,
+    lens: list,
+    bounds_list: list,
+) -> list:
     # get inital vectors given just locaitons
     z_vector, x_vector = calc_x_z_vectors_from_joint_loc(
         wrist_loc, pinky_loc, pointer_loc
@@ -432,14 +442,14 @@ def calculate_angles_given_joint_loc(
     wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
 
     raw_angles = arm_angles + wrist_angles + [claw_agl]
-    raw_angles = [999 if math.isnan(x) else x for x in raw_angles]
+    raw_angles = [-999 if math.isnan(x) else x for x in raw_angles]
 
     adj_angles_list = calc_alt_wirst_angles(raw_angles, bounds_list)
 
     return adj_angles_list
 
 
-def calculate_end_rot_matrix_from_angles(adj_angles, lens):
+def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.ndarray:
     # with all angles can just calculate final angles and locations
     # mainly used for double checking
     DH_table = return_dh_table(adj_angles[:6], lens)
@@ -450,96 +460,119 @@ def calculate_end_rot_matrix_from_angles(adj_angles, lens):
 
 
 #%%
-lengths = [5, 8, 10, 2, 3, 1]
-a = lengths[0]
-b = lengths[1]
-c = lengths[2]
-d = lengths[3]
-e = lengths[4]
-f = lengths[5]
+# lengths = [0, 8, 10, 0, 0, 0]
+# bounds_list = [
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+# ]
 
-bounds_list = [
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-    {"min": -360, "max": 360},
-]
+# agl_list = calculate_angles_given_joint_loc(
+#     [10, 0, 15],
+#     [29.540558916608976, 48.0685496768094, 28.078700303403046],
+#     [33.300900141156646, 50.38910883622469, 27.41454766866296],
+#     [32.631637794527386, 49.99106219329053, 27.52054288921509],
+#     lengths,
+#     bounds_list,
+# )
 
-wrist_list = [
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    [b + c + d, 0, a],  # wrist: right down,
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-    # [0, c + d, a + b],
-]
-
-pointer_pinky_thumb_list = [
-    [[0, 0, 1], [0, 1, 0], [1, 0, 0]],  # up : horizontal
-    [[0, 0, 1], [1, 0, 0], [0, -1, 0]],  # up : vertical
-    [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],  # down : horizontal
-    [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],  # down : vertical
-    [[1, 0, 0], [0, 1, 0], [0, 0, -1]],  # right : horizontal
-    [[1, 0, 0], [0, 0, -1], [0, -1, 0]],  # right : vertical
-    [[0, 1, 0], [0, 0, -1], [1, 0, 0]],  # front : horizontal
-    [[0, 1, 0], [-1, 0, 0], [0, 0, -1]],  # front : vertical
-]
-
-wrist_cord_add = [
-    [0, 0, e + f],
-    [0, 0, e + f],
-    [0, 0, -(e + f)],
-    [0, 0, -(e + f)],
-    [(e + f), 0, 0],
-    [(e + f), 0, 0],
-    [0, (e + f), 0],
-    [0, (e + f), 0],
-]
-
-end_cords_xyz = [np.array(x) + np.array(y) for x, y in zip(wrist_list, wrist_cord_add)]
-
-combo_cords = []
-for n in range(len(wrist_list)):
-    wrist_cord = np.array(wrist_list[n])
-    adj_pp_list = [np.add(x, wrist_cord) for x in pointer_pinky_thumb_list[n]]
-    combo_cords.append([wrist_cord] + (adj_pp_list))
-print(end_cords_xyz)
+# agl_list
 
 #%%
-adj_angle_list = []
-for x, exp_cord in zip(combo_cords, end_cords_xyz):
-    adj_angle_list = calculate_angles_given_joint_loc(
-        x[0], x[2], x[1], x[3], lengths, bounds_list
-    )
-    for adj_agl in adj_angle_list:
+# lengths = [5, 8, 10, 2, 3, 1]
+# a = lengths[0]
+# b = lengths[1]
+# c = lengths[2]
+# d = lengths[3]
+# e = lengths[4]
+# f = lengths[5]
 
-        end_rot_matrix = calculate_end_rot_matrix_from_angles(adj_agl, lengths)
-        mtx = np.array(end_rot_matrix)
-        end_cord = np.array([mtx[0, 3], mtx[1, 3], mtx[2, 3]])
-        print((end_cord == exp_cord).all(), end_cord, exp_cord)
+# bounds_list = [
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+#     {"min": -360, "max": 360},
+# ]
 
-print(np.array(adj_angle_list))
+# wrist_list = [
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     [b + c + d, 0, a],  # wrist: right down,
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+#     # [0, c + d, a + b],
+# ]
 
-#%%
-lengths = [5, 8, 10, 2, 3, 1]
-test_angles = [0, 0, 0, 0, 90, 0]
-DH_table = return_dh_table(test_angles, lengths)
-homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
-end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
-print(end_rot_matrix)
+# pointer_pinky_thumb_list = [
+#     [[0, 0, 1], [0, 1, 0], [1, 0, 0]],  # up : horizontal
+#     [[0, 0, 1], [1, 0, 0], [0, -1, 0]],  # up : vertical
+#     [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],  # down : horizontal
+#     [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],  # down : vertical
+#     [[1, 0, 0], [0, 1, 0], [0, 0, -1]],  # right : horizontal
+#     [[1, 0, 0], [0, 0, -1], [0, -1, 0]],  # right : vertical
+#     [[0, 1, 0], [0, 0, -1], [1, 0, 0]],  # front : horizontal
+#     [[0, 1, 0], [-1, 0, 0], [0, 0, -1]],  # front : vertical
+# ]
+
+# wrist_cord_add = [
+#     [0, 0, e + f],
+#     [0, 0, e + f],
+#     [0, 0, -(e + f)],
+#     [0, 0, -(e + f)],
+#     [(e + f), 0, 0],
+#     [(e + f), 0, 0],
+#     [0, (e + f), 0],
+#     [0, (e + f), 0],
+# ]
+
+# end_cords_xyz = [np.array(x) + np.array(y) for x, y in zip(wrist_list, wrist_cord_add)]
+
+# combo_cords = []
+# for n in range(len(wrist_list)):
+#     wrist_cord = np.array(wrist_list[n])
+#     adj_pp_list = [np.add(x, wrist_cord) for x in pointer_pinky_thumb_list[n]]
+#     combo_cords.append([wrist_cord] + (adj_pp_list))
+# print(end_cords_xyz)
+
+# #%%
+# adj_angle_list = []
+# for x, exp_cord in zip(combo_cords, end_cords_xyz):
+#     adj_angle_list = calculate_angles_given_joint_loc(
+#         x[0], x[2], x[1], x[3], lengths, bounds_list
+#     )
+#     for adj_agl in adj_angle_list:
+
+#         end_rot_matrix = calculate_end_rot_matrix_from_angles(adj_agl, lengths)
+#         mtx = np.array(end_rot_matrix)
+#         end_cord = np.array([mtx[0, 3], mtx[1, 3], mtx[2, 3]])
+#         print((end_cord == exp_cord).all(), end_cord, exp_cord)
+
+# print(np.array(adj_angle_list))
+
+# #%%
+# lengths = [5, 8, 10, 2, 3, 1]
+# test_angles = [0, 0, 0, 0, 90, 0]
+# DH_table = return_dh_table(test_angles, lengths)
+# homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
+# end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
+# print(end_rot_matrix)
 
 
 # %%

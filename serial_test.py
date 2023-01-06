@@ -1,3 +1,56 @@
+#%%
+import time
+from pySerialTransfer import pySerialTransfer as txfer
+
+
+link = txfer.SerialTransfer('COM5')
+
+link.open()
+time.sleep(2) # allow some time for the Arduino to completely reset
+
+while True:
+    send_size = 0
+    
+    ###################################################################
+    # Send a list
+    ###################################################################
+    list_ = [1, 3]
+    list_size = link.tx_obj(list_)
+    send_size += list_size
+
+    ###################################################################
+    # Transmit all the data to send in a single packet
+    ###################################################################
+    link.send(send_size)
+    
+    ###################################################################
+    # Wait for a response and report any errors while receiving packets
+    ###################################################################
+    while not link.available():
+        if link.status < 0:
+            if link.status == txfer.CRC_ERROR:
+                print('ERROR: CRC_ERROR')
+            elif link.status == txfer.PAYLOAD_ERROR:
+                print('ERROR: PAYLOAD_ERROR')
+            elif link.status == txfer.STOP_BYTE_ERROR:
+                print('ERROR: STOP_BYTE_ERROR')
+            else:
+                print('ERROR: {}'.format(link.status))
+    
+    ###################################################################
+    # Parse response list
+    ###################################################################
+    rec_list_  = link.rx_obj(obj_type=type(list_),
+                                obj_byte_size=list_size,
+                                list_format='i')
+    
+    ###################################################################
+    # Display the received data
+    ###################################################################
+    # print('SENT: {}'.format(list_, ))
+    # print('RCVD: {}'.format(rec_list_))
+    print(' ')
+
 # %%
 import numpy as np
 import serial
@@ -60,14 +113,15 @@ import serial
 import struct
 from time import sleep
 
-ser = serial.Serial(baudrate="9600", timeout=0.5, port="COM6")
-
+ser = serial.Serial(baudrate="9600", timeout=0.5, port="COM5")
+sleep(10)
+#%%
 left_angles = [-2933, 94, 1000, 29, -2000]
 # left_angles = [1, 2, 3, 4, 5]
 
-for x in range(5):
+for x in range(100):
 
-    sleep(1)
+    sleep(0.1)
     # strlist = [str(x) for x in left_angles]
     # str_ang = "$".join(strlist) + "$"
     # arduino_serial.write(str_ang.encode())
@@ -91,7 +145,48 @@ for x in range(5):
 
     left_angles = [x + 1 for x in left_angles]
     sleep(1)
+#%%
+#Arduino forum 2020 - https://forum.arduino.cc/index.php?topic=714968 
+import serial
+from struct import *
+import sys
+import time
+import random
+import ast
 
+
+try:
+    ser=serial.Serial(baudrate='115200', timeout=.5, port='com5')
+except:
+    print('Port open error')
+
+time.sleep(5)#no delete!
+while True:
+    try:
+        time.sleep(1)
+        ser.write(pack ('15h',0,1,2,3,4,666,6,7,444,9,10,2222,12,13,random.randint(0,100)))#the 15h is 15 element, and h is an int type data
+                                                                    #random test, that whether data is updated
+        time.sleep(.01)#delay
+        dat=ser.readline()#read a line data
+        
+        if dat!=b''and dat!=b'\r\n':
+            try:                #convert in list type the readed data
+                dats=str(dat)
+                dat1=dats.replace("b","")
+                dat2=dat1.replace("'",'')
+                dat3=dat2[:-4]
+                list_=ast.literal_eval(dat3) #list_ value can you use in program
+                print(dat3)
+            except:
+                print('Error in corvert, readed: ', dats)
+        time.sleep(.05)
+    except KeyboardInterrupt:
+        break
+    except:
+        print(str(sys.exc_info())) #print error
+        break
+
+#the delays need, that the bytes are good order
 #%%
 arduino_serial.write(
     struct.pack(

@@ -5,7 +5,7 @@ const int DirY = 6;
 const int StepZ = 4;
 const int DirZ = 7;
 
-int calculate_target_steps(int stepper_steps, int target_degree)
+long calculate_target_steps(long stepper_steps, long target_degree)
 {
   long large_num = (long)target_degree * (long)stepper_steps;
   long stepper_fraction = large_num / 360;
@@ -23,9 +23,9 @@ void setup()
   pinMode(DirZ, OUTPUT);
 }
 
-const int yz_stepper_steps = 200 * 6 * 6;
-const int x_stepper_steps = 200 * 20;
-int target_array[4][3] = {
+const long yz_stepper_steps = 200L * 4 * 6 * 6;
+const long x_stepper_steps = 200L *8 * 20;
+long target_array[4][3] = {
     {
         0,
         45,
@@ -48,9 +48,9 @@ int target_array[4][3] = {
     },
 };
 
-int stepsPos_x = 0;
-int stepsPos_y = 0;
-int stepsPos_z = 0;
+long stepsPos_x = 0;
+long stepsPos_y = 0;
+long stepsPos_z = 0;
 
 int dirInc_x = 1;
 int dirInc_y = 1;
@@ -62,8 +62,8 @@ void loop()
   {
     for (int target_num = 0; target_num < 4; ++target_num)
     {
-      int stepsTarget_x = calculate_target_steps(x_stepper_steps, target_array[target_num][0]);
-      int stepsToMove_x = stepsTarget_x - stepsPos_x;
+      long stepsTarget_x = calculate_target_steps(x_stepper_steps, target_array[target_num][0]);
+      long stepsToMove_x = stepsTarget_x - stepsPos_x;
       if (stepsToMove_x > 0)
       {
         dirInc_x = 1;
@@ -75,8 +75,8 @@ void loop()
         digitalWrite(DirX, LOW); // CW
       }
 
-      int stepsTarget_y = calculate_target_steps(yz_stepper_steps, target_array[target_num][1]);
-      int stepsToMove_y = stepsTarget_y - stepsPos_y;
+      long stepsTarget_y = calculate_target_steps(yz_stepper_steps, target_array[target_num][1]);
+      long stepsToMove_y = stepsTarget_y - stepsPos_y;
       if (stepsToMove_y > 0)
       {
         dirInc_y = 1;
@@ -88,8 +88,8 @@ void loop()
         digitalWrite(DirY, LOW); // CW
       }
 
-      int stepsTarget_z = calculate_target_steps(yz_stepper_steps, target_array[target_num][2]);
-      int stepsToMove_z = stepsTarget_z - stepsPos_z;
+      long stepsTarget_z = calculate_target_steps(yz_stepper_steps, target_array[target_num][2]);
+      long stepsToMove_z = stepsTarget_z - stepsPos_z;
 
       if (stepsToMove_z > 0)
       {
@@ -102,11 +102,11 @@ void loop()
         digitalWrite(DirZ, HIGH); // CCW
       }
 
-      int absStepsToMove_x = abs(stepsToMove_x);
-      int absStepsToMove_y = abs(stepsToMove_y);
-      int absStepsToMove_z = abs(stepsToMove_z);
+      long absStepsToMove_x = abs(stepsToMove_x);
+      long absStepsToMove_y = abs(stepsToMove_y);
+      long absStepsToMove_z = abs(stepsToMove_z);
 
-      int max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
+      long max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
 
       for (int x = 0; x <= max_move; x++)
       { // loop for 200 steps
@@ -123,7 +123,7 @@ void loop()
           digitalWrite(StepZ, HIGH);
         }
 
-        delayMicroseconds(700);
+        delayMicroseconds(600);
 
         
 
@@ -143,7 +143,7 @@ void loop()
           stepsPos_z += dirInc_z;
         }
 
-        delayMicroseconds(700);
+        delayMicroseconds(600);
       }
 
       Serial.print(target_num);
@@ -177,8 +177,8 @@ void loop()
 
   else
   {
-    int stepsTarget_x = calculate_target_steps(x_stepper_steps, 0);
-    int stepsToMove_x = stepsTarget_x - stepsPos_x;
+    long stepsTarget_x = calculate_target_steps(x_stepper_steps, 0);
+    long stepsToMove_x = stepsTarget_x - stepsPos_x;
     if (stepsToMove_x > 0)
     {
       dirInc_x = 1;
@@ -190,8 +190,8 @@ void loop()
       digitalWrite(DirX, LOW); // CW
     }
 
-    int stepsTarget_y = calculate_target_steps(yz_stepper_steps, 0);
-    int stepsToMove_y = stepsTarget_y - stepsPos_y;
+    long stepsTarget_y = calculate_target_steps(yz_stepper_steps, 0);
+    long stepsToMove_y = stepsTarget_y - stepsPos_y;
     if (stepsToMove_y > 0)
     {
       dirInc_y = 1;
@@ -203,8 +203,8 @@ void loop()
       digitalWrite(DirY, LOW); // CW
     }
 
-    int stepsTarget_z = calculate_target_steps(yz_stepper_steps, 0);
-    int stepsToMove_z = stepsTarget_z - stepsPos_z;
+    long stepsTarget_z = calculate_target_steps(yz_stepper_steps, 0);
+    long stepsToMove_z = stepsTarget_z - stepsPos_z;
 
     if (stepsToMove_z > 0)
     {
@@ -217,11 +217,11 @@ void loop()
       digitalWrite(DirZ, HIGH); // CCW
     }
 
-    int absStepsToMove_x = abs(stepsToMove_x);
-    int absStepsToMove_y = abs(stepsToMove_y);
-    int absStepsToMove_z = abs(stepsToMove_z);
+    long absStepsToMove_x = abs(stepsToMove_x);
+    long absStepsToMove_y = abs(stepsToMove_y);
+    long absStepsToMove_z = abs(stepsToMove_z);
 
-    int max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
+    long max_move = max(max(absStepsToMove_x, absStepsToMove_y), absStepsToMove_z);
 
     for (int x = 0; x <= max_move; x++)
     { // loop for 200 steps
@@ -238,7 +238,7 @@ void loop()
         digitalWrite(StepZ, HIGH);
       }
 
-      delayMicroseconds(700);
+      delayMicroseconds(400);
 
       
 
@@ -258,10 +258,10 @@ void loop()
         stepsPos_z += dirInc_z;
       }
 
-      delayMicroseconds(700);
+      delayMicroseconds(400);
     }
 
-    Serial.print('ENDING');
+    Serial.print("ENDING");
     Serial.print("\t");
     Serial.print(max_move);
     Serial.print("\t");

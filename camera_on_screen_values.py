@@ -3,27 +3,18 @@ import cv2 as cv
 import mediapipe as mp
 import numpy as np
 import pickle
+from time import sleep, time
 from src.angle_calc.utils import DLT
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
+from pySerialTransfer import pySerialTransfer as txfer
 
-import serial
-import struct
 
-arduino_serial = serial.Serial("COM6", 115200)
+# link_nema17 = txfer.SerialTransfer("COM5")
+# link_nema17.open()
+# link_28BYJ = txfer.SerialTransfer('COM6')
+# link_28BYJ.open()
 
-calibration_settings = {
-    "camera0": 0,
-    "camera1": 1,
-    "frame_width": 1920,
-    "frame_height": 1080,
-    "mono_calibration_frames": 10,
-    "stereo_calibration_frames": 10,
-    "view_resize": 1,
-    "checkerboard_box_size_scale": 2.3,
-    "checkerboard_rows": 6,
-    "checkerboard_columns": 9,
-    "cooldown": 100,
-}
+sleep(3)  # allow some time for the Arduino to completely reset
 
 
 def open_pickle(path):
@@ -36,7 +27,6 @@ def open_pickle(path):
 # mp_drawing = mp.solutions.drawing_utils
 # mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
-
 frame_shape = [1080, 1920]
 
 # add here if you need more keypoints
@@ -62,36 +52,45 @@ joint_list = [
 ]
 
 bounds_list = [
-    {"min": 0, "max": 180},
+    {"min": -90, "max": 200},
+    {"min": 0, "max": 120},
     {"min": 0, "max": 135},
-    {"min": 0, "max": 135},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
-    {"min": 0, "max": 180},
+    {"min": -360, "max": 360},
+    {"min": -360, "max": 360},
+    {"min": -360, "max": 360},
+    {"min": -360, "max": 360},
 ]
-lens = [8, 23.2, 16.8, 2.8, 5, 6]
+lens = [8, 20, 13.5, 5.5, 0, 7]
 
 
-def extract_x_y_z_cords(ih, iw, cords):
-    return [int(round(cords.x * iw)), int(round(cords.y * ih))]
+def extract_xy_cords(ih, iw, cords, shouldRound=False):
+    if shouldRound == False:
+        return [cords.x * iw, 1, cords.y * ih]
+    else:
+        return [int(cords.x * iw), int(cords.y * ih)]
 
 
 def get_joint_cords(results, ih, iw, joint_name):
-    right_joint_cord = [0, 0]
-    left_joint_cord = [0, 0]
+    right_joint_cord = [-999, -999]
+    left_joint_cord = [-999, -999]
+    r_right_joint_cord = [-999, -999]
+    r_left_joint_cord = [-999, -999]
 
     for handness, hand_landmarks in zip(
         results.multi_handedness, results.multi_hand_landmarks
     ):
         joint_landmark = hand_landmarks.landmark[mp_hands.HandLandmark[joint_name]]
-        joint_cords = extract_x_y_z_cords(ih, iw, joint_landmark)
+        joint_cords = extract_xy_cords(ih, iw, joint_landmark, False)
+        r_joint_cords = extract_xy_cords(ih, iw, joint_landmark, True)
 
         if handness.classification[0].label == "Left":
             right_joint_cord = joint_cords
+            r_right_joint_cord = r_joint_cords
         elif handness.classification[0].label == "Right":
             left_joint_cord = joint_cords
+            r_left_joint_cord = r_joint_cords
 
-    return right_joint_cord, left_joint_cord
+    return right_joint_cord, left_joint_cord, r_right_joint_cord, r_left_joint_cord
 
 
 ############################ CODE TO DRAW ORIGIN LINES ############################
@@ -121,7 +120,6 @@ def gather_2d_points_given_3d(P0, P1, draw_axes_points):
 def offset_3d_origin(pt, new_origin):
     kp = np.array(pt) - np.array(new_origin)
     kp_adj = [-kp[0], -kp[2], -kp[1]]
-    kp_adj = [round(x) for x in kp_adj]
     return kp_adj
 
 
@@ -199,7 +197,8 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         "left": [[0, 0, 0, 0, 0, 0, 0]],
         "right": [[0, 0, 0, 0, 0, 0, 0]],
     }
-    num_to_avg = 10
+    num_to_avg = 4
+    priorTime = round(time() * 1000)
 
     while 1:
 
@@ -246,66 +245,74 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         }
         if results0.multi_hand_landmarks:
             for joint in joint_list:
-                right, left = get_joint_cords(results0, height, width, joint)
-                cv.circle(frame0, right, 3, (0, 0, 255), -1)
-                cv.circle(frame0, left, 3, (0, 0, 255), -1)
+                right, left, rr, rl = get_joint_cords(results0, height, width, joint)
+                cv.circle(frame0, rr, 3, (0, 0, 255), -1)
+                cv.circle(frame0, rl, 3, (0, 0, 255), -1)
                 frame_dict["cam_0"]["right"][joint] = right
                 frame_dict["cam_0"]["left"][joint] = left
         else:
             # if no keypoints are found, simply fill the frame data with [-1,-1] for each kpt
             for joint in joint_list:
-                frame_dict["cam_0"]["right"][joint] = [0, 0]
-                frame_dict["cam_0"]["left"][joint] = [0, 0]
+                frame_dict["cam_0"]["right"][joint] = [-999, -999]
+                frame_dict["cam_0"]["left"][joint] = [-999, -999]
 
         if results1.multi_hand_landmarks:
             for joint in joint_list:
-                right, left = get_joint_cords(results1, height, width, joint)
-                cv.circle(frame1, right, 3, (0, 0, 255), -1)
-                cv.circle(frame1, left, 3, (0, 0, 255), -1)
+                right, left, rr, rl = get_joint_cords(results1, height, width, joint)
+                cv.circle(frame1, rr, 3, (0, 0, 255), -1)
+                cv.circle(frame1, rl, 3, (0, 0, 255), -1)
                 frame_dict["cam_1"]["right"][joint] = right
                 frame_dict["cam_1"]["left"][joint] = left
         else:
             # if no keypoints are found, simply fill the frame data with [-1,-1] for each kpt
             for joint in joint_list:
-                frame_dict["cam_1"]["right"][joint] = [0, 0]
-                frame_dict["cam_1"]["left"][joint] = [0, 0]
+                frame_dict["cam_1"]["right"][joint] = [-999, -999]
+                frame_dict["cam_1"]["left"][joint] = [-999, -999]
 
         # calculate 3d position
         kp_3d = {"left": {}, "right": {}}
-        angles_dict = {"left": {}, "right": {}}
+        angles_dict = {
+            "left": {
+                "angles": [0, 0, 0, 0, 0, 0, 0],
+                "agl_list": [0, 0, 0, 0, 0, 0, 0],
+            },
+            "right": {
+                "angles": [0, 0, 0, 0, 0, 0, 0],
+                "agl_list": [0, 0, 0, 0, 0, 0, 0],
+            },
+        }
 
         for dir in ["left", "right"]:
+            new_origin = [0, 0, 0]
             if dir == "left":
                 new_origin = left_origin
             elif dir == "right":
                 new_origin = right_origin
-            else:
-                new_origin = [0, 0, 0]
 
             for joint in joint_list:
-
                 kp_0 = frame_dict["cam_0"][dir][joint]
                 kp_1 = frame_dict["cam_1"][dir][joint]
 
-                if kp_0 == [0, 0] or kp_1 == [0, 0]:
-                    kp_3d[dir][joint] = [0, 0, 0]
-                    kp_3d[dir]["raw_" + joint] = [0, 0, 0]
+                if kp_0 == [-999, -999] or kp_1 == [-999, -999]:
+                    kp_3d[dir][joint] = [-999, -999, -999]
+                    kp_3d[dir]["raw_" + joint] = [-999, -999, -999]
 
                 else:
                     kp = DLT(P0, P1, kp_0, kp_1)
-                    kp_3d[dir]["raw_" + joint] = [round(x) for x in kp]
+                    kp_3d[dir]["raw_" + joint] = kp
                     kp_3d[dir][joint] = offset_3d_origin(kp, new_origin)
 
-            if kp_3d[dir]["WRIST"] == [0, 0, 0]:
-                adj_angles = [0, 0, 0, 0, 0, 0]
-                claw_agl = 255
+            if (
+                kp_3d[dir]["WRIST"] == [-999, -999, -999]
+                or (kp_3d[dir]["PINKY_TIP"] == [-999, -999, -999])
+                or (kp_3d[dir]["INDEX_FINGER_TIP"] == [-999, -999, -999])
+                or (kp_3d[dir]["THUMB_TIP"] == [-999, -999, -999])
+            ):
+                adj_angles = [-999, -999, -999, -999, -999, -999, -999]
+                angles_dict[dir]["angles"] = adj_angles
+
             else:
-                (
-                    raw_angles,
-                    adj_angles,
-                    end_rot_matrix,
-                    claw_agl,
-                ) = calculate_angles_given_joint_loc(
+                adj_angles_list = calculate_angles_given_joint_loc(
                     kp_3d[dir]["WRIST"],
                     kp_3d[dir]["PINKY_TIP"],
                     kp_3d[dir]["INDEX_FINGER_TIP"],
@@ -313,24 +320,41 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                     lens,
                     bounds_list,
                 )
-            angles = adj_angles + [claw_agl]
-            angles_dict[dir]["angles"] = angles
 
-            # AVG OUT ANGLES AND SAVE
-            # catch instances where failed angle calc
-            # average out certain number of angles and remove latest
-            # just delete first angle
-            angles_list = angles_list_dict[dir]
-            if adj_angles != [0, 0, 0, 0, 0, 0] and claw_agl != 255:
-                if len(angles_list) == num_to_avg:
-                    del angles_list[0]
-                    angles_list += [angles]
+                if any(any(x == -999 for x in adj_agl) for adj_agl in adj_angles_list):
+                    adj_angles = [-999, -999, -999, -999, -999, -999, -999]
+                    angles_dict[dir]["angles"] = adj_angles
+
                 else:
-                    angles_list += [angles]
-            angles_list_dict[dir] = angles_list
+                    angles_list = angles_list_dict[dir]
 
-            avg_agls = np.mean(np.array(angles_list), axis=0)
-            angles_dict[dir]["agl_list"] = [round(x) for x in avg_agls]
+                    # CHECK CLOSEST ANGLES
+                    latest_angles = angles_list[-1]
+                    sum_angle_diff = [0] * 4
+                    for n in range(4):
+                        abs_diff = [
+                            abs(x - y)
+                            for x, y in zip(adj_angles_list[n][3:6], latest_angles[3:6])
+                        ]
+                        sum_angle_diff[n] = sum(abs_diff)
+                    min_index = sum_angle_diff.index(min(sum_angle_diff))
+                    adj_angles = adj_angles_list[min_index]
+
+                    angles_dict[dir]["angles"] = adj_angles
+
+                    # AVG OUT ANGLES AND SAVE
+                    # catch instances where failed angle calc
+                    # average out certain number of angles and remove latest
+                    # just delete first angle
+                    if len(angles_list) == num_to_avg:
+                        del angles_list[0]
+                        angles_list += [adj_angles]
+                    else:
+                        angles_list += [adj_angles]
+                    angles_list_dict[dir] = angles_list
+
+            avg_agls = np.mean(np.array(angles_list_dict[dir]), axis=0)
+            angles_dict[dir]["agl_list"] = avg_agls
 
         frame1 = cv.flip(frame1, 1)
         frame0 = cv.flip(frame0, 1)
@@ -339,7 +363,9 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         for dir in ["left", "right"]:
             cv.putText(
                 frame0,
-                dir + "- RAW Wrist: " + str(kp_3d[dir]["raw_WRIST"]),
+                dir
+                + "- RAW Wrist: "
+                + str([round(x, 1) for x in kp_3d[dir]["raw_WRIST"]]),
                 (20, height),
                 cv.FONT_HERSHEY_SIMPLEX,
                 0.5,
@@ -352,7 +378,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             for joint in joint_list:
                 cv.putText(
                     frame0,
-                    dir + "-" + joint + ": " + str(kp_3d[dir][joint]),
+                    dir
+                    + "-"
+                    + joint
+                    + ": "
+                    + str([round(x, 1) for x in kp_3d[dir][joint]]),
                     (20, height),
                     cv.FONT_HERSHEY_SIMPLEX,
                     0.5,
@@ -376,25 +406,104 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 height_2 -= 30
 
         left_angles = angles_dict["left"]["agl_list"]
-        print(left_angles)
-        arduino_serial.write(
-            struct.pack(
-                "7h",
-                left_angles[0],
-                left_angles[1],
-                left_angles[2],
-                left_angles[3],
-                left_angles[4],
-                left_angles[5],
-                left_angles[6],
+
+        # delay sending data to arduino every 500 ms
+        currentTime = round(time() * 1000)
+        if currentTime - priorTime > 1000:
+            steps_28BYJ = 2048
+            steps_nema17_p = 200 * 4 * 6 * 6
+            steps_nema17_c = 200 * 8 * 20
+
+            def calculate_target_steps(
+                steps_fullTurn: int, target_degree: float
+            ) -> int:
+                steps_to_move = steps_fullTurn * round(target_degree) / 360
+                return round(steps_to_move)
+
+            stepper_const_list = (
+                [steps_nema17_c] + [steps_nema17_p] * 2 + [steps_28BYJ] * 4
             )
-        )
+
+            steps_list = [
+                calculate_target_steps(const, angle)
+                for angle, const in zip(left_angles, stepper_const_list)
+            ]
+
+            ### https://github.com/PowerBroker2/pySerialTransfer ####
+            send_size = 0
+
+            # ###################################################################
+            # # Send a list
+            # ###################################################################
+            # list_size = link_nema17.tx_obj(steps_list[:3])
+            # send_size += list_size
+
+            # ###################################################################
+            # # Transmit all the data to send in a single packet
+            # ###################################################################
+            # link_nema17.send(send_size)
+
+            # ###################################################################
+            # # Wait for a response and report any errors while receiving packets
+            # ###################################################################
+            # while not link_nema17.available():
+            #     if link_nema17.status < 0:
+            #         if link_nema17.status == txfer.CRC_ERROR:
+            #             print("ERROR: CRC_ERROR")
+            #         elif link_nema17.status == txfer.PAYLOAD_ERROR:
+            #             print("ERROR: PAYLOAD_ERROR")
+            #         elif link_nema17.status == txfer.STOP_BYTE_ERROR:
+            #             print("ERROR: STOP_BYTE_ERROR")
+            #         else:
+            #             print("ERROR: {}".format(link_nema17.status))
+            # ###################################################################
+            # # Parse response list
+            # ###################################################################
+            # rec_list_ = link_nema17.rx_obj(
+            #     obj_type=type(steps_list), obj_byte_size=list_size, list_format="i"
+            # )
+
+            # ###################################################################
+            # # Display the received data
+            # ###################################################################
+            # print(
+            #     "SENT: {}    RCVD: {}".format(
+            #         steps_list[:3],
+            #         rec_list_,
+            #     )
+            # )
+
+            # # send data later
+            # priorTime = currentTime
 
         cv.imshow("cam1", frame1)
         cv.imshow("cam0", frame0)
 
+        # ESC key exits camera and resets angles to 0
         k = cv.waitKey(1)
         if k & 0xFF == 27:
+            send_size = 0
+
+            # ###################################################################
+            # # Send a list
+            # ###################################################################
+            # list_size = link_nema17.tx_obj([0, 0, 0])
+            # send_size += list_size
+
+            # ###################################################################
+            # # Transmit all the data to send in a single packet
+            # ###################################################################
+            # link_nema17.send(send_size)
+
+            # # ser_28BYJ.write(
+            # #     struct.pack(
+            # #         "4h",
+            # #         0,
+            # #         0,
+            # #         0,
+            # #         0,
+            # #     )
+            # # )
             break  # 27 is ESC key.
 
     cv.destroyAllWindows()
@@ -404,12 +513,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
 if __name__ == "__main__":
 
-    # this will load the sample videos if no camera ID is given
-    # input_stream1 = 'media/cam0_test.mp4'
-    # input_stream2 = 'media/cam1_test.mp4'
-
     # put camera id as command line arguements
-    # if len(sys.argv) == 3:
     input_stream1 = 0
     input_stream2 = 1
 
@@ -419,11 +523,6 @@ if __name__ == "__main__":
     P1 = param_dict["cam1"]["P"]
 
     run_mp(input_stream1, input_stream2, P0, P1)
-
-    # this will create keypoints file in current working folder
-    # write_keypoints_to_disk("camera_calb/kp_test/kpts_cam0.dat", kpts_cam0)
-    # write_keypoints_to_disk("camera_calb/kp_test/kpts_cam1.dat", kpts_cam1)
-    # write_keypoints_to_disk("camera_calb/kp_test/kpts_3d.dat", kpts_3d)
 
 
 #%%
