@@ -62,6 +62,9 @@ bounds_list = [
 ]
 lens = [8, 20, 13.5, 5.5, 0, 7]
 
+left_origin = [20, 15, 50]
+right_origin = [-20, 15, 50]
+
 
 def extract_xy_cords(ih, iw, cords, shouldRound=False):
     if shouldRound == False:
@@ -133,11 +136,11 @@ def check_calibration(P0, P1, left_origin, right_origin):
     # project 3D points to each camera view manually. This can also be done using cv.projectPoints()
     # Note that this uses homogenous coordinate formulation
     left_shift = np.array(left_origin).reshape((1, 3))
-    left_pts = 5 * coordinate_points + left_shift
+    left_pts = 10 * coordinate_points + left_shift
     left_cam0, left_cam1 = gather_2d_points_given_3d(P0, P1, left_pts)
 
     right_shift = np.array(right_origin).reshape((1, 3))
-    right_pts = 5 * coordinate_points + right_shift
+    right_pts = 10 * coordinate_points + right_shift
     right_cam0, right_cam1 = gather_2d_points_given_3d(P0, P1, right_pts)
 
     return left_cam0, left_cam1, right_cam0, right_cam1
@@ -180,8 +183,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         min_detection_confidence=0.5, min_tracking_confidence=0.5, model_complexity=1
     )
 
-    left_origin = [25, 20, 70]
-    right_origin = [-25, 20, 70]
     left_cam0, left_cam1, right_cam0, right_cam1 = check_calibration(
         P0, P1, left_origin, right_origin
     )

@@ -687,7 +687,7 @@ save_frames_two_cams("camera0", "camera1")  # save simultaneous frames
 
 #%%
 # images_prefix = "frames/camera0*"
-# cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_p refix)
+# cmtx0, dist0 = calibrate_camera_for_intrinsic_parameters(images_prefix)
 # images_prefix = "frames/camera1*"
 # cmtx1, dist1 = calibrate_camera_for_intrinsic_parameters(images_prefix)
 
