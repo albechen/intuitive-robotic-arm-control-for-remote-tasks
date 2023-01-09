@@ -22,16 +22,16 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         cap.set(4, frame_shape[0])
 
     vid0 = cv.VideoWriter(
-        "media/cam0.avi",
-        cv.VideoWriter_fourcc(*"MJPG"),
+        "media/cam0.mp4",
+        cv.VideoWriter_fourcc(*"mp4v"),
         20.0,
-        (frame_shape[1], frame_shape[0]),
+        (frame_shape[0], frame_shape[0]),
     )
     vid1 = cv.VideoWriter(
-        "media/cam1.avi",
-        cv.VideoWriter_fourcc(*"MJPG"),
+        "media/cam1.mp4",
+        cv.VideoWriter_fourcc(*"mp4v"),
         20.0,
-        (frame_shape[1], frame_shape[0]),
+        (frame_shape[0], frame_shape[0]),
     )
 
     # create hand keypoints detector object.
