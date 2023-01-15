@@ -1,87 +1,59 @@
-#include <AccelStepper.h>
-#include <MultiStepper.h>
+#include <SerialTransfer.h>
+#include <Stepper.h>
 
-const int num_angles = 7;
-int pos_list[num_angles];                          // this value is the upgratable data
-byte *ddata = reinterpret_cast<byte *>(&pos_list); // pointer for transferData()
-size_t pcDataLen = sizeof(pos_list);
-bool newData = false;
+// Defines the number of steps per rotation
+const int stepsPerRevolution = 2038;
+const int delay_step = 2200;
+const int num_steppers = 3;
 
-// Define some steppers and the pins the will use
-AccelStepper sm1(AccelStepper::FULL4WIRE, 23, 27, 25, 29);
-AccelStepper sm2(AccelStepper::FULL4WIRE, 33, 37, 35, 39);
-AccelStepper sm3(AccelStepper::FULL4WIRE, 43, 47, 45, 49);
-AccelStepper sm4(AccelStepper::FULL4WIRE, 53, 57, 55, 59);
+// Creates an instance of stepper class
+// Pins entered in sequence IN1-IN3-IN2-IN4 for proper step sequence
+Stepper step1 = Stepper(stepsPerRevolution, 23, 27, 25, 29);
+Stepper step2 = Stepper(stepsPerRevolution, 33, 37, 35, 39);
+Stepper step3 = Stepper(stepsPerRevolution, 43, 47, 45, 49);
+Stepper step4 = Stepper(stepsPerRevolution, 22, 26, 24, 28);
+Stepper stepperList[3] = {step1, step2, step3};
 
-int calculate_target_steps(int steps_fullTurn, int target_degree)
-{
-    long large_num = (long)target_degree * (long)steps_fullTurn;
-    long stepper_fraction = large_num / 3600;
-    return lround(stepper_fraction);
-}
-
-const int steps_28BYJ = 2048;
-const int steps_nema17_p = 200 * 2 * 6 * 6;
-const int steps_nema17_c = 200 * 2 * 20;
-MultiStepper steppers;
+SerialTransfer myTransfer;
+long target_steps[3] = {0, 0, 0};
+long current_steps[3] = {0, 0, 0};
 
 void setup()
 {
     Serial.begin(115200);
-
-    sm1.setMaxSpeed(200.0);
-    sm1.setAcceleration(100.0);
-
-    sm2.setMaxSpeed(200.0);
-    sm2.setAcceleration(100.0);
-
-    sm3.setMaxSpeed(200.0);
-    sm3.setAcceleration(100.0);
-
-    sm4.setMaxSpeed(200.0);
-    sm4.setAcceleration(100.0);
-
-    steppers.addStepper(sm1);
-    steppers.addStepper(sm2);
-    steppers.addStepper(sm3);
-    steppers.addStepper(sm4);
-}
-
-void checkForNewData()
-{
-    if (Serial.available() >= pcDataLen && newData == false)
-    {
-        byte inByte;
-        for (byte n = 0; n < pcDataLen; n++)
-        {
-            ddata[n] = Serial.read();
-        }
-        while (Serial.available() > 0)
-        { // now make sure there is no other data in the buffer
-            byte dumpByte = Serial.read();
-            Serial.println(dumpByte);
-        }
-        newData = true;
-    }
+    myTransfer.begin(Serial);
 }
 
 void loop()
 {
-    checkForNewData();
-    if (newData == true)
+    if (myTransfer.available())
     {
-        newData = false;
+        // send all received data back to Python
+        for (uint16_t i = 0; i < myTransfer.bytesRead; i++)
+        {
+            myTransfer.packet.txBuff[i] = myTransfer.packet.rxBuff[i];
+        }
+
+        myTransfer.sendData(myTransfer.bytesRead);
+        myTransfer.rxObj(target_steps);
     }
 
-    stepper.moveTo(pos_list);
-    stepper.run();
+    // SWITCH DIR OUTPUT DEPENDING ON TARGET STEP
+    // then move and update current step by inc or dec
+      
 
-    // else
-    // {
-    //     for (int i=0, i<num_angles, i++){
-    //         pos_list[i] = 0;
-    //     }
-    //     stepper.moveTo(pos_list);
-    //     stepper.run();
-    // }
+    for (int n = 0; n < num_steppers; n++)
+    {
+        if (target_steps[n] > current_steps[n]) // CCW
+        {
+            stepperList[n].step(1);
+            current_steps[n]++;
+        }
+        else if (target_steps[n] < current_steps[n]) // CW
+        {
+            stepperList[n].step(-1);
+            current_steps[n]--;
+        }
+    }
+    delayMicroseconds(delay_step);
 }

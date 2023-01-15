@@ -1,10 +1,6 @@
-#include <AccelStepper.h>
-#include <MultiStepper.h>
 #include <SerialTransfer.h>
 
 SerialTransfer myTransfer;
-
-int pos_list[3];
 
 const int STEP_X = 2;
 const int DIR_X = 5;
@@ -13,55 +9,75 @@ const int DIR_Y = 6;
 const int STEP_Z = 4;
 const int DIR_Z = 7;
 
-AccelStepper bg1(AccelStepper::DRIVER, STEP_X, DIR_X);
-AccelStepper bg2(AccelStepper::DRIVER, STEP_Y, DIR_Y);
-AccelStepper bg3(AccelStepper::DRIVER, STEP_Z, DIR_Z);
+const int STEP_list[3] = {STEP_X, STEP_Y, STEP_Z};
+const int DIR_list[3] = {DIR_X, DIR_Y, DIR_Z};
 
-MultiStepper steppers;
+const int delay_step = 500;
+const int num_steppers = 3;
+long target_steps[3] = {0, 0, 0};
+long current_steps[3] = {0, 0, 0};
+
+// set direction, HIGH for CCW, LOW for CW
 
 void setup()
 {
-    Serial.begin(115200);
-    myTransfer.begin(Serial);
+  Serial.begin(115200);
+  myTransfer.begin(Serial);
 
-    bg1.setMaxSpeed(3000.0);
-    bg1.setSpeed(2000);
-    bg1.moveTo(0);
-
-    bg2.setMaxSpeed(3000.0);
-    bg2.setSpeed(2000);
-    bg2.moveTo(0);
-
-    bg3.setMaxSpeed(3000.0);
-    bg3.setSpeed(2000);
-    bg3.moveTo(0);
-
-    // steppers.addStepper(sm1);
-    // steppers.addStepper(sm2);
-    // steppers.addStepper(sm3);
+  pinMode(STEP_X, OUTPUT);
+  pinMode(DIR_X, OUTPUT);
+  pinMode(STEP_Y, OUTPUT);
+  pinMode(DIR_Y, OUTPUT);
+  pinMode(STEP_Z, OUTPUT);
+  pinMode(DIR_Z, OUTPUT);
 }
-
 
 void loop()
 {
-    if(myTransfer.available())
+  if (myTransfer.available())
   {
     // send all received data back to Python
-    for(uint16_t i=0; i < myTransfer.bytesRead; i++)
+    for (uint16_t i = 0; i < myTransfer.bytesRead; i++)
+    {
       myTransfer.packet.txBuff[i] = myTransfer.packet.rxBuff[i];
-    
-    myTransfer.sendData(myTransfer.bytesRead);
+    }
 
-    myTransfer.rxObj(pos_list);
+    myTransfer.sendData(myTransfer.bytesRead);
+    myTransfer.rxObj(target_steps);
   }
 
+  // SWITCH DIR OUTPUT DEPENDING ON TARGET STEP
+  // then move and update current step by inc or dec
 
-    bg1.moveTo(pos_list[0]);
-    bg1.runSpeedToPosition();
+  for (int n = 0; n < num_steppers; n++)
+  {
+    if (target_steps[n] > current_steps[n])
+    {
+      digitalWrite(DIR_list[n], HIGH); // CCW
+      current_steps[n]++;
+    }
+    else if (target_steps[n] < current_steps[n]) // CW
+    {
+      digitalWrite(DIR_list[n], LOW); // CW
+      current_steps[n]--;
+    }
+  }
 
-    bg2.moveTo(pos_list[1]);
-    bg2.runSpeedToPosition();
+  for (int n = 0; n < num_steppers; n++)
+  {
+    if (target_steps[n] != current_steps[n])
+    {
+      digitalWrite(STEP_list[n], HIGH);
+    }
+  }
+  delayMicroseconds(delay_step);
 
-    bg3.moveTo(pos_list[2]);
-    bg3.runSpeedToPosition();
+  for (int n = 0; n < num_steppers; n++)
+  {
+    if (target_steps[n] != current_steps[n])
+    {
+      digitalWrite(STEP_list[n], LOW);
+    }
+  }
+  delayMicroseconds(delay_step);
 }

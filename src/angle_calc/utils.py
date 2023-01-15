@@ -34,9 +34,7 @@ def DLT(P1, P2, point1, point2):
 
 def read_camera_parameters(camera_id):
 
-    inf = open(
-        "camera_calb/camera_parameters/camera" + str(camera_id) + "_intrinsics.dat", "r"
-    )
+    inf = open("cam_calb/camera_parameters/c" + str(camera_id) + ".dat", "r")
 
     cmtx = []
     dist = []
@@ -55,9 +53,9 @@ def read_camera_parameters(camera_id):
     return np.array(cmtx), np.array(dist)
 
 
-def read_rotation_translation(camera_id, savefolder="camera_calb/camera_parameters/"):
+def read_rotation_translation(camera_id, savefolder="cam_calb/camera_parameters/"):
 
-    inf = open(savefolder + "camera" + str(camera_id) + "_rot_trans.dat", "r")
+    inf = open(savefolder + "rot_trans_c" + str(camera_id) + ".dat", "r")
 
     inf.readline()
     rot = []
