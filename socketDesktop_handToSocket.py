@@ -5,14 +5,10 @@ import numpy as np
 from time import time
 from src.angle_calc.utils import DLT, get_projection_matrix, write_keypoints_to_disk
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
+import socket
 import pickle
 
 #%%
-
-mp_drawing = mp.solutions.drawing_utils
-mp_hands = mp.solutions.hands
-
-
 def get_origin_pts(P0, P1):
     # get origin cordinates
     coordinate_points = np.array(
@@ -49,6 +45,19 @@ def calculate_target_steps(steps_fullTurn: int, target_degree: float) -> int:
 
 
 def run_mp(input_stream1, input_stream2, P0, P1):
+
+    # SOCKET CONNECTION
+    host = "***REMOVED***"  # client IP (desktop)
+    port = 4005
+    server = ("***REMOVED***", 4000)  # server IP (laptop)
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind((host, port))
+    print('CONNECTED TO SERVER')
+
+    # MEDIAPIPE CONNECTION
+    mp_drawing = mp.solutions.drawing_utils
+    mp_hands = mp.solutions.hands
 
     ##### DEFINED COSTANTS
     joint_list = [
@@ -342,7 +351,9 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             ]
 
             #### SOCKET SENDING ########
-
+            msg = pickle.dumps(steps_list)
+            s.sendto(msg, server)
+            print('SENT: ', msg)
             #########################
 
             # send data later
@@ -357,7 +368,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         if k & 0xFF == 27:
 
             #### SOCKET SENDING ########
-
+            steps_list = [0] * 7
+            msg = pickle.dumps(steps_list)
+            s.sendto(msg, server)
+            print('SENT: ', msg)
+            s.close()
             #########################
 
             break  # 27 is ESC key.
