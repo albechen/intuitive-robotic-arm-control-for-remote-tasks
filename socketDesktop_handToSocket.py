@@ -53,7 +53,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))
-    print('CONNECTED TO SERVER')
+    print("CONNECTED TO SERVER")
 
     # MEDIAPIPE CONNECTION
     mp_drawing = mp.solutions.drawing_utils
@@ -337,7 +337,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             #### SOCKET SENDING ########
             msg = pickle.dumps(steps_list)
             s.sendto(msg, server)
-            print('SENT: ', msg)
+            print("SENT: ", msg)
             #########################
 
             # send data later
@@ -355,7 +355,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             steps_list = [0] * 7
             msg = pickle.dumps(steps_list)
             s.sendto(msg, server)
-            print('SENT: ', msg)
+            print("SENT: ", msg)
             s.close()
             #########################
 
