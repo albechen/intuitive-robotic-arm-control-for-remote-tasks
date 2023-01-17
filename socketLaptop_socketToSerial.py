@@ -17,9 +17,9 @@ def Main():
     print("Server Started")
 
     #### ARDUINO CONNECTIOn ######
-    link_nema17 = txfer.SerialTransfer("COM5")
+    link_nema17 = txfer.SerialTransfer("COM3")
     link_nema17.open()
-    link_28BYJ = txfer.SerialTransfer("COM6")
+    link_28BYJ = txfer.SerialTransfer("COM4")
     link_28BYJ.open()
     sleep(3)
 
