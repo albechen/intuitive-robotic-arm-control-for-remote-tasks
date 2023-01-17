@@ -1,4 +1,0 @@
-pip install pyserial
-pip install mediapipe
-pip install numpy
-pip install scipy

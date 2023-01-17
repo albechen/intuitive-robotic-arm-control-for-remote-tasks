@@ -8,7 +8,6 @@ from src.angle_calc.utils import DLT, get_projection_matrix, write_keypoints_to_
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 from pySerialTransfer import pySerialTransfer as txfer
 
-
 link_nema17 = txfer.SerialTransfer("COM5")
 link_nema17.open()
 link_28BYJ = txfer.SerialTransfer("COM6")
@@ -17,7 +16,6 @@ link_28BYJ.open()
 sleep(3)  # allow some time for the Arduino to completely reset
 
 #%%
-
 mp_drawing = mp.solutions.drawing_utils
 mp_hands = mp.solutions.hands
 
@@ -74,7 +72,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         {"min": -180, "max": 180},
         {"min": -120, "max": 120},
         {"min": -180, "max": 180},
-        {"min": -360, "max": 360},
+        {"min": -20, "max": 135},
     ]
 
     lens = [8, 20, 13.5, 5.5, 0, 7]
@@ -402,7 +400,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             # Send a list
             ###################################################################
             send_size_28BYJ = 0
-            list_size_28BYJ = link_28BYJ.tx_obj(steps_list[3:6])
+            list_size_28BYJ = link_28BYJ.tx_obj(steps_list[3:7])
             if list_size_28BYJ is not None:
                 send_size_28BYJ += list_size_28BYJ
             else:
