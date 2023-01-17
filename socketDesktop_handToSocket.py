@@ -116,7 +116,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     pixel_points_camera0, pixel_points_camera1 = get_origin_pts(P0, P1)
 
     ###### INITALIZE LISTS FOR CALCULATIONS
-    kpts_3d = []
     rolling_agl_list = [[0, 0, 0, 0, 0, 0, 0]]
     num_to_avg = 4
 
@@ -190,8 +189,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
             for joints in joint_list:
                 kpt_dict["c1"][joints[0]] = [-999, -999]
 
-        frame_p3ds = []
-
         for joint in joint_list:
             kp_0 = kpt_dict["c0"][joint[0]]
             kp_1 = kpt_dict["c1"][joint[0]]
@@ -205,19 +202,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 kpt_rotated = Rx @ Rz @ kp @ flip
                 # kpt_dict['kp_3d']["raw_" + joint] = kp
                 kpt_dict["kp_3d"][joint[0]] = kpt_rotated
-
-        for joint in joint_list:
-            frame_p3ds.append(kpt_dict["kp_3d"][joint[0]])
-
-        """
-        This contains the 3d position of each keypoint in current frame.
-        For real time application, this is what you want.
-        """
-        if any([x[0] == -999 for x in frame_p3ds]):
-            pass
-        else:
-            frame_p3ds = np.array(frame_p3ds).reshape((4, 3))
-            kpts_3d.append(frame_p3ds)
 
         ### GET ANGLE CACLULATIONS
         curr_agl_list = [-999, -999, -999, -999, -999, -999, -999]
@@ -381,8 +365,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     for cap in caps:
         cap.release()
 
-    return np.array(kpts_3d)
-
 
 if __name__ == "__main__":
 
@@ -396,7 +378,4 @@ if __name__ == "__main__":
     P0 = get_projection_matrix(0)
     P1 = get_projection_matrix(1)
 
-    kpts_3d = run_mp(input_stream1, input_stream2, P0, P1)
-
-    # this will create keypoints file in current working folder
-    write_keypoints_to_disk("cam_calb/data/kpts_3d_temp.dat", kpts_3d)
+    run_mp(input_stream1, input_stream2, P0, P1)
