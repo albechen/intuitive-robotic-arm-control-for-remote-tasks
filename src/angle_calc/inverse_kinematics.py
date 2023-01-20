@@ -328,21 +328,31 @@ def calc_rot_given_zx_vectors(z_vector: np.ndarray, x_vector: np.ndarray) -> lis
 
 
 #%%
+def avg_two_3d_points(pt1: list, pt2: list) -> list:
+    avg_list = [(x + y) / 2 for x, y in zip(pt1, pt2)]
+    return avg_list
+
+
 def calc_x_z_vectors_from_joint_loc(
-    wrist_loc: list, pinky_loc: list, pointer_loc: list
+    stump_loc: list,
+    idx_tip: list,
+    mid_tip: list,
 ) -> tuple:
-    pinky_vec = np.array(pinky_loc) - np.array(wrist_loc)
-    pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
-    palm_vec = np.cross(pinky_vec, pointer_vec)
-    # palm_vec_2 = np.cross(pointer_vec, pinky_vec)
-    return pointer_vec, palm_vec
+
+    avg_tip = avg_two_3d_points(idx_tip, mid_tip)
+    z_vec = np.array(avg_tip) - np.array(stump_loc)
+
+    idx_vec = np.array(idx_tip) - np.array(stump_loc)
+    mid_vec = np.array(mid_tip) - np.array(stump_loc)
+    x_vec = np.cross(mid_vec, idx_vec)
+
+    return z_vec, x_vec
 
 
-def calc_claw_angle(wrist_loc: list, pointer_loc: list, thumb_loc: list) -> float:
-    thumb_vec = np.array(thumb_loc) - np.array(wrist_loc)
-    pointer_vec = np.array(pointer_loc) - np.array(wrist_loc)
-    joint_agl = angle_between(thumb_vec, pointer_vec)
-
+def calc_claw_angle(stump_loc: list, idx_tip: list, mid_tip: list) -> float:
+    idx_vec = np.array(idx_tip) - np.array(stump_loc)
+    mid_vec = np.array(mid_tip) - np.array(stump_loc)
+    joint_agl = angle_between(mid_vec, idx_vec) * 1.5
     return joint_agl
 
 
@@ -425,26 +435,25 @@ def calc_alt_wirst_angles(raw_angles: list, bounds_list: list) -> list:
 
 
 def calculate_angles_given_joint_loc(
-    wrist_loc: list,
-    pinky_loc: list,
-    pointer_loc: list,
-    thumb_loc: list,
+    idx_mcp: list,
+    idx_tip: list,
+    mid_mcp: list,
+    mid_tip: list,
     lens: list,
     bounds_list: list,
 ) -> list:
     # get inital vectors given just locaitons
-    z_vector, x_vector = calc_x_z_vectors_from_joint_loc(
-        wrist_loc, pinky_loc, pointer_loc
-    )
+    stump_loc = avg_two_3d_points(idx_mcp, mid_mcp)
+    z_vector, x_vector = calc_x_z_vectors_from_joint_loc(stump_loc, idx_tip, mid_tip)
 
-    claw_agl = calc_claw_angle(wrist_loc, pointer_loc, thumb_loc)
-    arm_angles = calc_arm_angles(wrist_loc, lens)
+    claw_agl = calc_claw_angle(stump_loc, idx_tip, mid_tip)
+    arm_angles = calc_arm_angles(stump_loc, lens)
 
     ## get wrist angle given z and x vectors
     # two options since can flip palm either way
-
     wirst_rot_06 = calc_rot_given_zx_vectors(z_vector, x_vector)
     wrist_angles = calc_wrist_angles(arm_angles + [0, 0, 0], lens, wirst_rot_06)
+
     ## CHANGED TO NEGATIVE SINCE STEPPERS MOVE IN CW DIR FOR POSTIVE ANGLE DEGREE
     wrist_angles = [-x for x in wrist_angles]
 
@@ -466,7 +475,7 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
     return end_rot_matrix
 
 
-#%%
+# %%
 # lengths = [0, 8, 10, 0, 0, 0]
 # bounds_list = [
 #     {"min": -360, "max": 360},
@@ -528,14 +537,14 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 # ]
 
 # pointer_pinky_thumb_list = [
-#     [[0, 0, 1], [0, 1, 0], [1, 0, 0]],  # up : horizontal
-#     [[0, 0, 1], [1, 0, 0], [0, -1, 0]],  # up : vertical
-#     [[0, 0, -1], [0, 1, 0], [-1, 0, 0]],  # down : horizontal
-#     [[0, 0, -1], [-1, 0, 0], [0, -1, 0]],  # down : vertical
-#     [[1, 0, 0], [0, 1, 0], [0, 0, -1]],  # right : horizontal
-#     [[1, 0, 0], [0, 0, -1], [0, -1, 0]],  # right : vertical
-#     [[0, 1, 0], [0, 0, -1], [1, 0, 0]],  # front : horizontal
-#     [[0, 1, 0], [-1, 0, 0], [0, 0, -1]],  # front : vertical
+#     [[0, -1, 1], [0, 1, 1]],  # up : horizontal
+#     [[0, 0, 1], [1, 0, 0]],  # up : vertical
+#     [[0, 0, -1], [0, 1, 0]],  # down : horizontal
+#     [[0, 0, -1], [-1, 0, 0]],  # down : vertical
+#     [[1, -1, 0], [1, 1, 0]],  # right : horizontal
+#     [[1, 0, 1], [1, 0, -1]],  # right : vertical
+#     [[0, 1, 0], [0, 0, -1]],  # front : horizontal
+#     [[0, 1, 0], [-1, 0, 0]],  # front : vertical
 # ]
 
 # wrist_cord_add = [
@@ -562,26 +571,29 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 # adj_angle_list = []
 # for x, exp_cord in zip(combo_cords, end_cords_xyz):
 #     adj_angle_list = calculate_angles_given_joint_loc(
-#         x[0], x[2], x[1], x[3], lengths, bounds_list
+#         x[0], x[1], x[0], x[2], lengths, bounds_list
 #     )
+#     inverse_neg = [1, 1, 1, -1, -1, -1, 1]
 #     for adj_agl in adj_angle_list:
-
+#         adj_agl = [x*y for x, y in zip(inverse_neg,adj_agl)]
 #         end_rot_matrix = calculate_end_rot_matrix_from_angles(adj_agl, lengths)
 #         mtx = np.array(end_rot_matrix)
 #         end_cord = np.array([mtx[0, 3], mtx[1, 3], mtx[2, 3]])
 #         print((end_cord == exp_cord).all(), end_cord, exp_cord)
 
-# print(np.array(adj_angle_list))
+#     print(np.array(adj_angle_list))
 
 # #%%
 # lengths = [8, 20, 13.5, 5.5, 0, 7]
-# test_angles = [0, 0, 0, 0, -90, 0]
+# lengths = [5, 8, 10, 2, 3, 1]
+# test_angles = [0, 0, 0, 0, 90, 0]
 # # test_angles = [62.1, 52.4, 72.8, 0, 0, 0]
 # DH_table = return_dh_table(test_angles, lengths)
 # homo_matrix_list = calc_homo_matrix(test_angles, DH_table)
 # end_rot_matrix = calc_series_rotation(homo_matrix_list, 0, 6)
 # print(end_rot_matrix)
 
+# #%%
 # points = {
 #     "WRIST": [11.72807113, 24.63063475, 22.40443979],
 #     "THUMB_TIP": [13.99622764, 21.17608839, 30.81874532],
@@ -596,36 +608,36 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 # ]
 # agls = [64.5, 64.4, 75.5, 11.2, 108.7, -50.8, 13.0]
 
-# # points = {
-# #     "WRIST": [10.84282841, 21.42719212, 24.79908365],
-# #     "THUMB_TIP": [13.32789476, 19.88487063, 15.53860106],
-# #     "INDEX_FINGER_TIP": [15.05010878, 24.06773044, 12.26389772],
-# #     "PINKY_TIP": [11.5183303, 29.09501156, 16.91070188],
-# # }
-# # mul_agls = [
-# #     [63.2, 75.0, 82.6, 167.8, 64.1, 89.7, 20.7],
-# #     [63.2, 75.0, 82.6, 167.8, 64.1, -90.3, 20.7],
-# #     [63.2, 75.0, 82.6, -12.2, -64.1, 89.7, 20.7],
-# #     [63.2, 75.0, 82.6, -12.2, -64.1, -90.3, 20.7],
-# # ]
-# # agls = [63.2, 75.0, 82.6, 167.8, 64.1, -90.3, 20.7]
+# points = {
+#     "WRIST": [10.84282841, 21.42719212, 24.79908365],
+#     "THUMB_TIP": [13.32789476, 19.88487063, 15.53860106],
+#     "INDEX_FINGER_TIP": [15.05010878, 24.06773044, 12.26389772],
+#     "PINKY_TIP": [11.5183303, 29.09501156, 16.91070188],
+# }
+# mul_agls = [
+#     [63.2, 75.0, 82.6, 167.8, 64.1, 89.7, 20.7],
+#     [63.2, 75.0, 82.6, 167.8, 64.1, -90.3, 20.7],
+#     [63.2, 75.0, 82.6, -12.2, -64.1, 89.7, 20.7],
+#     [63.2, 75.0, 82.6, -12.2, -64.1, -90.3, 20.7],
+# ]
+# agls = [63.2, 75.0, 82.6, 167.8, 64.1, -90.3, 20.7]
 
-# # points = {
-# #     "WRIST": [15.61401201, 21.59682316, 26.22006716],
-# #     "THUMB_TIP": [23.36391067, 25.78619491, 29.15633429],
-# #     "INDEX_FINGER_TIP": [23.95958934, 27.58383403, 31.34801129],
-# #     "PINKY_TIP": [18.29192804, 27.98011351, 31.38054358],
-# # }
-# # mul_agls = [
-# #     [63.7, 27.3, 135, 94.6, 120, 116.9, 10.5],
-# #     [63.7, 27.3, 135, 94.6, 120, -63.1, 10.5],
-# #     [63.7, 27.3, 135, -85.4, -120, 116.9, 10.5],
-# #     [63.7, 27.3, 135, -85.4, -120, -63.1, 10.5],
-# # ]
-# # agls = [63.7, 27.3, 135, -85.4, -120, -63.1, 10.5]
+# points = {
+#     "WRIST": [15.61401201, 21.59682316, 26.22006716],
+#     "THUMB_TIP": [23.36391067, 25.78619491, 29.15633429],
+#     "INDEX_FINGER_TIP": [23.95958934, 27.58383403, 31.34801129],
+#     "PINKY_TIP": [18.29192804, 27.98011351, 31.38054358],
+# }
+# mul_agls = [
+#     [63.7, 27.3, 135, 94.6, 120, 116.9, 10.5],
+#     [63.7, 27.3, 135, 94.6, 120, -63.1, 10.5],
+#     [63.7, 27.3, 135, -85.4, -120, 116.9, 10.5],
+#     [63.7, 27.3, 135, -85.4, -120, -63.1, 10.5],
+# ]
+# agls = [63.7, 27.3, 135, -85.4, -120, -63.1, 10.5]
 
 
-# #%%
+#%%
 # adj_angle_list = calculate_angles_given_joint_loc(
 #     points["WRIST"],
 #     points["PINKY_TIP"],
@@ -639,9 +651,9 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 #     adj_angle_list[0], [8, 20, 13.5, 5.5, 0, 7]
 # )
 # print(end_rot_matrix)
-# # calc_arm_angles(points["WRIST"], lengths)
+# calc_arm_angles(points["WRIST"], lengths)
 
-#%%
+# %%
 # lengths = [8, 20, 13.5, 5.5, 0, 7]
 # mul_agls = [
 #     [63.7, 27.3, 135, 94.6, 120, 116.9, 10.5],

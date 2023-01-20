@@ -75,7 +75,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         {"min": -20, "max": 135},
     ]
 
-    lens = [8, 20, 13.5, 5.5, 0, 7]
+    lens = [15, 20, 13.5, 5.5, 0, 7]
 
     height = 720
     width = 1280
@@ -84,6 +84,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     Rx = np.array(([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]))
     Rz = np.array(([[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]))
     flip = np.array(([[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]]))
+    cord_scale = 2
 
     ## CONST FOR MOTORS
     steps_28BYJ = 2038
@@ -200,7 +201,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
             else:
                 kp = DLT(P0, P1, kp_0, kp_1)
-                kpt_rotated = Rx @ Rz @ kp @ flip
+                kpt_rotated = Rx @ Rz @ kp @ flip * cord_scale
                 # kpt_dict['kp_3d']["raw_" + joint] = kp
                 kpt_dict["kp_3d"][joint[0]] = kpt_rotated
 

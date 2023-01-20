@@ -3,7 +3,7 @@ import cv2 as cv
 import mediapipe as mp
 import numpy as np
 from time import time
-from src.angle_calc.utils import DLT, get_projection_matrix, write_keypoints_to_disk
+from src.angle_calc.utils import DLT, get_projection_matrix
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 import socket
 import pickle
@@ -45,15 +45,21 @@ def calculate_target_steps(steps_fullTurn: int, target_degree: float) -> int:
 
 
 def run_mp(input_stream1, input_stream2, P0, P1):
+    ##
+    ## STARTING POSTION ARM
+    ## STRAIGHT ARM POINTING RIGHT
+    ## SMALL 2 - positive dir points up
+    ## CLAW - starts horizontally palm up
+    ##
 
     # SOCKET CONNECTION
-    host = "***REMOVED***"  # client IP (desktop)
-    port = 4005
-    server = ("***REMOVED***", 4000)  # server IP (laptop)
+    # host = "***REMOVED***"  # client IP (desktop)
+    # port = 4005
+    # server = ("***REMOVED***", 4000)  # server IP (laptop)
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind((host, port))
-    print("CONNECTED TO SERVER")
+    # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # s.bind((host, port))
+    # print("CONNECTED TO SERVER")
 
     # MEDIAPIPE CONNECTION
     mp_drawing = mp.solutions.drawing_utils
@@ -61,10 +67,10 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
     ##### DEFINED COSTANTS
     joint_list = [
-        ["WRIST", 0],
-        ["THUMB_TIP", 4],
+        ["INDEX_FINGER_MCP", 5],
         ["INDEX_FINGER_TIP", 8],
-        ["PINKY_TIP", 20],
+        ["MIDDLE_FINGER_MCP", 9],
+        ["MIDDLE_FINGER_TIP", 12],
     ]
 
     bounds_list = [
@@ -74,10 +80,10 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         {"min": -180, "max": 180},
         {"min": -120, "max": 120},
         {"min": -180, "max": 180},
-        {"min": -360, "max": 360},
+        {"min": -20, "max": 135},
     ]
 
-    lens = [8, 20, 13.5, 5.5, 0, 7]
+    lens = [8 + 13 + 4, 20, 13.5, 5.5, 0, 7]
 
     height = 720
     width = 1280
@@ -86,6 +92,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     Rx = np.array(([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]))
     Rz = np.array(([[0.0, 1.0, 0.0], [-1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]))
     flip = np.array(([[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]]))
+    cord_scale = 1.5
 
     ## CONST FOR MOTORS
     steps_28BYJ = 2038
@@ -199,27 +206,26 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
             else:
                 kp = DLT(P0, P1, kp_0, kp_1)
-                kpt_rotated = Rx @ Rz @ kp @ flip
+                kpt_rotated = Rx @ Rz @ kp @ flip * cord_scale
                 # kpt_dict['kp_3d']["raw_" + joint] = kp
                 kpt_dict["kp_3d"][joint[0]] = kpt_rotated
 
         ### GET ANGLE CACLULATIONS
         curr_agl_list = [-999, -999, -999, -999, -999, -999, -999]
-
         if (
-            kpt_dict["kp_3d"]["WRIST"][0] == -999
-            or (kpt_dict["kp_3d"]["PINKY_TIP"][0] == -999)
+            kpt_dict["kp_3d"]["INDEX_FINGER_MCP"][0] == -999
             or (kpt_dict["kp_3d"]["INDEX_FINGER_TIP"][0] == -999)
-            or (kpt_dict["kp_3d"]["THUMB_TIP"][0] == -999)
+            or (kpt_dict["kp_3d"]["MIDDLE_FINGER_MCP"][0] == -999)
+            or (kpt_dict["kp_3d"]["MIDDLE_FINGER_TIP"][0] == -999)
         ):
             curr_agl_list = [-999, -999, -999, -999, -999, -999, -999]
 
         else:
             multp_agl_list = calculate_angles_given_joint_loc(
-                kpt_dict["kp_3d"]["WRIST"],
-                kpt_dict["kp_3d"]["PINKY_TIP"],
+                kpt_dict["kp_3d"]["INDEX_FINGER_MCP"],
                 kpt_dict["kp_3d"]["INDEX_FINGER_TIP"],
-                kpt_dict["kp_3d"]["THUMB_TIP"],
+                kpt_dict["kp_3d"]["MIDDLE_FINGER_MCP"],
+                kpt_dict["kp_3d"]["MIDDLE_FINGER_TIP"],
                 lens,
                 bounds_list,
             )
@@ -333,11 +339,12 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 calculate_target_steps(const, angle)
                 for angle, const in zip(avg_agls, stepper_const_list)
             ]
+            print(steps_list)
 
             #### SOCKET SENDING ########
-            msg = pickle.dumps(steps_list)
-            s.sendto(msg, server)
-            print("SENT: ", msg)
+            # msg = pickle.dumps(steps_list)
+            # s.sendto(msg, server)
+            # print("SENT: ", msg)
             #########################
 
             # send data later
@@ -352,11 +359,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         if k & 0xFF == 27:
 
             #### SOCKET SENDING ########
-            steps_list = [0] * 7
-            msg = pickle.dumps(steps_list)
-            s.sendto(msg, server)
-            print("SENT: ", msg)
-            s.close()
+            # steps_list = [0] * 7
+            # msg = pickle.dumps(steps_list)
+            # s.sendto(msg, server)
+            # print("SENT: ", msg)
+            # s.close()
             #########################
 
             break  # 27 is ESC key.

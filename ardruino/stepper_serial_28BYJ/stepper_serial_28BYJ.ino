@@ -15,11 +15,10 @@ Stepper step4 = Stepper(stepsPerRevolution, 22, 26, 24, 28);
 Stepper stepperList[4] = {step1, step2, step3, step4};
 
 SerialTransfer myTransfer;
-// put claw 45 degree - set program to think it's at 90
 // claw is using the same stepper but it's designed to move CW
 // for pos so dont need to change neg
-long target_steps[4] = {0, 0, 0, 510};
-long current_steps[4] = {0, 0, 0, 510};
+long target_steps[4] = {0, 0, 0, 0};
+long current_steps[4] = {0, 0, 0, 0};
 
 void setup()
 {
@@ -43,7 +42,6 @@ void loop()
 
     // SWITCH DIR OUTPUT DEPENDING ON TARGET STEP
     // then move and update current step by inc or dec
-      
 
     for (int n = 0; n < num_steppers; n++)
     {
