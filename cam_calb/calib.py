@@ -772,11 +772,6 @@ T1 = T  # to avoid confusion, camera1 R and T are labeled R1 and T1
 # check your calibration makes sense
 
 #%%
-camera0_data = [cmtx0, dist0, R0, T0]
-camera1_data = [cmtx1, dist1, R1, T1]
-check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=60.0)
-
-#%%
 """Optional. Define a different origin point and save the calibration data"""
 # get the world to camera0 rotation and translation
 R_W0, T_W0 = get_world_space_origin(
@@ -795,14 +790,20 @@ R_W1, T_W1 = get_cam1_to_world_transforms(
     os.path.join("frames_pair", "camera0_0.png"),
     os.path.join("frames_pair", "camera1_0.png"),
 )
-#%%
-camera0_data = [cmtx0, dist0, R_W0, T_W0]
-camera1_data = [cmtx1, dist1, R_W1, T_W1]
-check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=0)
+
 #%%
 # save rotation and translation parameters to disk
 save_extrinsic_calibration_parameters(
     R_W0, T_W0, R_W1, T_W1, prefix=""
 )  # this will write R and T to disk
 
-# %%
+
+#%%
+# camera0_data = [cmtx0, dist0, R0, T0]
+# camera1_data = [cmtx1, dist1, R1, T1]
+# check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=60.0)
+
+# #%%
+# camera0_data = [cmtx0, dist0, R_W0, T_W0]
+# camera1_data = [cmtx1, dist1, R_W1, T_W1]
+# check_calibration("camera0", camera0_data, "camera1", camera1_data, _zshift=0)

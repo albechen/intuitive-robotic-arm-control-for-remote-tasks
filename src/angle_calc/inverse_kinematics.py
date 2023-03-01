@@ -213,40 +213,6 @@ def calc_wrist_angles(arm_angles: list, lens: list, rot_06: list) -> list:
     return [np.degrees(theta_4), np.degrees(theta_5), np.degrees(theta_6)]
 
 
-# def calc_wrist_angles(arm_angles, lens, rot_06):
-#     DH_table = return_dh_table(arm_angles, lens)
-
-#     homo_matrix_list = calc_homo_matrix(arm_angles, DH_table)
-
-#     rot_03 = calc_series_rotation(homo_matrix_list, 0, 3)[:3, :3]
-#     inv_rot_03 = np.linalg.inv(rot_03)
-#     rot_36 = np.dot(inv_rot_03, rot_06)
-
-#     if np.sin(np.arccos(rot_36[2,2])) != 0:
-#         theta_5 = np.arctan2((1 - rot_36[0,0]**2)**0.5, rot_36[0,0])
-#         theta_4 = np.arctan2(rot_36[1,0]/np.cos(theta_5), rot_36[0,0]/np.cos(theta_5))
-#         theta_6 = np.arctan2(rot_36[2,1]/np.cos(theta_5), rot_36[2,2]/np.cos(theta_5))
-#     else:
-#         'error'
-
-#     return [np.degrees(theta_4), np.degrees(theta_5), np.degrees(theta_6)]
-
-
-# def get_rotation_matrix(vector_to_align, align_to_vector):
-#     align_to_vector = align_to_vector / np.linalg.norm(align_to_vector)
-#     vector_to_align = vector_to_align / np.linalg.norm(vector_to_align)
-#     v = np.cross(vector_to_align, align_to_vector)
-#     c = np.dot(vector_to_align, align_to_vector)
-
-#     v1, v2, v3 = v
-#     h = 1 / (1 + c)
-
-#     Vmat = np.array([[0, -v3, v2], [v3, 0, -v1], [-v2, v1, 0]])
-
-#     R = np.eye(3, dtype=np.float64) + Vmat + (Vmat.dot(Vmat) * h)
-#     return R
-
-
 def get_rotation_matrix(vec2: np.ndarray, vec1: np.ndarray) -> np.ndarray:
     """get rotation matrix between two vectors using scipy"""
 
@@ -277,15 +243,6 @@ def unit_vector(vector: np.ndarray) -> np.ndarray:
 
 
 def angle_between(v1: np.ndarray, v2: np.ndarray) -> float:
-    """Returns the angle in radians between vectors 'v1' and 'v2'::
-
-    >>> angle_between((1, 0, 0), (0, 1, 0))
-    1.5707963267948966
-    >>> angle_between((1, 0, 0), (1, 0, 0))
-    0.0
-    >>> angle_between((1, 0, 0), (-1, 0, 0))
-    3.141592653589793
-    """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     deg = np.rad2deg(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
@@ -333,26 +290,36 @@ def avg_two_3d_points(pt1: list, pt2: list) -> list:
     return avg_list
 
 
-def calc_x_z_vectors_from_joint_loc(
-    stump_loc: list,
-    idx_tip: list,
-    mid_tip: list,
-) -> tuple:
-
-    avg_tip = avg_two_3d_points(idx_tip, mid_tip)
-    z_vec = np.array(avg_tip) - np.array(stump_loc)
-
-    idx_vec = np.array(idx_tip) - np.array(stump_loc)
-    mid_vec = np.array(mid_tip) - np.array(stump_loc)
-    x_vec = np.cross(mid_vec, idx_vec)
-
-    return z_vec, x_vec
+def calc_z_vectors_from_joint_loc(stump_loc: list, mid_tip: list) -> np.ndarray:
+    z_vec = np.array(mid_tip) - np.array(stump_loc)
+    return z_vec
 
 
-def calc_claw_angle(stump_loc: list, idx_tip: list, mid_tip: list) -> float:
-    idx_vec = np.array(idx_tip) - np.array(stump_loc)
-    mid_vec = np.array(mid_tip) - np.array(stump_loc)
-    joint_agl = angle_between(mid_vec, idx_vec) * 1.5
+def calc_x_vectors_from_joint_loc(
+    wrist: list,
+    thb_tip: list,
+    pky_tip: list,
+) -> np.ndarray:
+    thb_vec = np.array(thb_tip) - np.array(wrist)
+    pky_vec = np.array(pky_tip) - np.array(wrist)
+    x_vec = np.cross(pky_vec, thb_vec)
+    return x_vec
+
+
+def calc_claw_angle(wrist: list, mid_mcp: list, thb_tip: list) -> float:
+    thb_vec = np.array(thb_tip) - np.array(wrist)
+    mid_vec = np.array(mid_mcp) - np.array(wrist)
+    joint_agl = angle_between(mid_vec, thb_vec)
+
+    mult_angle = 1 * 1.75
+    min_angle = 20
+    joint_agl -= min_angle
+
+    if joint_agl < min_angle:
+        joint_agl = 0
+    else:
+        joint_agl = joint_agl * mult_angle
+
     return joint_agl
 
 
@@ -435,19 +402,28 @@ def calc_alt_wirst_angles(raw_angles: list, bounds_list: list) -> list:
 
 
 def calculate_angles_given_joint_loc(
-    idx_mcp: list,
-    idx_tip: list,
-    mid_mcp: list,
-    mid_tip: list,
+    right_pts: dict,
+    left_pts: dict,
     lens: list,
     bounds_list: list,
 ) -> list:
-    # get inital vectors given just locaitons
-    stump_loc = avg_two_3d_points(idx_mcp, mid_mcp)
-    z_vector, x_vector = calc_x_z_vectors_from_joint_loc(stump_loc, idx_tip, mid_tip)
 
-    claw_agl = calc_claw_angle(stump_loc, idx_tip, mid_tip)
-    arm_angles = calc_arm_angles(stump_loc, lens)
+    l_wrist = left_pts["WRIST"]
+    l_idx_mcp = left_pts["INDEX_FINGER_MCP"]
+    l_mid_mcp = left_pts["MIDDLE_FINGER_MCP"]
+    l_mid_tip = left_pts["MIDDLE_FINGER_TIP"]
+    l_pky_mcp = left_pts["PINKY_MCP"]
+
+    r_wrist = right_pts["WRIST"]
+    r_thb_tip = right_pts["THUMB_TIP"]
+    r_mid_tip = right_pts["MIDDLE_FINGER_TIP"]
+
+    # get inital vectors given just locaitons
+    z_vector = calc_z_vectors_from_joint_loc(l_mid_mcp, l_mid_tip)
+    x_vector = calc_x_vectors_from_joint_loc(l_wrist, l_idx_mcp, l_pky_mcp)
+
+    claw_agl = calc_claw_angle(r_wrist, r_mid_tip, r_thb_tip)
+    arm_angles = calc_arm_angles(l_mid_mcp, lens)
 
     ## get wrist angle given z and x vectors
     # two options since can flip palm either way
@@ -465,8 +441,8 @@ def calculate_angles_given_joint_loc(
     return adj_angles_list
 
 
-def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.ndarray:
-    # with all angles can just calculate final angles and locations
+def calc_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.ndarray:
+    # with all angles can just calc final angles and locations
     # mainly used for double checking
     DH_table = return_dh_table(adj_angles[:6], lens)
     homo_matrix_list = calc_homo_matrix(adj_angles[:6], DH_table)
@@ -476,16 +452,40 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 
 
 # %%
-# lengths = [0, 8, 10, 0, 0, 0]
-# bounds_list = [
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-#     {"min": -360, "max": 360},
-# ]
+lens = [8 + 13 + 4, 20, 13.5, 5.5, 0, 7]
+bounds_list = [
+    {"min": -90, "max": 200},
+    {"min": 0, "max": 120},
+    {"min": 0, "max": 135},
+    {"min": -270, "max": 270},
+    {"min": -120, "max": 120},
+    {"min": -270, "max": 270},
+    {"min": 0, "max": 135},
+]
+
+left_pts = {}
+left_pts["WRIST"] = [10, 20, 20]
+left_pts["INDEX_FINGER_MCP"] = [11, 20, 21]
+left_pts["MIDDLE_FINGER_MCP"] = [10, 20, 21]
+left_pts["MIDDLE_FINGER_TIP"] = [10, 20, 22]
+left_pts["PINKY_MCP"] = [9, 20, 21]
+
+right_pts = {}
+right_pts["WRIST"] = [0, 0, 0]
+right_pts["THUMB_TIP"] = [1, 0, 0]
+right_pts["MIDDLE_FINGER_TIP"] = [0, 1, 0]
+
+
+agls = calculate_angles_given_joint_loc(right_pts, left_pts, lens, bounds_list)
+agls_0 = agls[0]
+print("Given 3d Points: ")
+for x in left_pts:
+    print("\t", x, left_pts[x])
+print("\n", "Return - Arm Joint Angles: ", agls_0[:3])
+print("Return - Wrist Joint Angles: ", agls_0[3:6])
+
+#%%
+
 
 # agl_list = calculate_angles_given_joint_loc(
 #     [10, 0, 15],
@@ -576,7 +576,7 @@ def calculate_end_rot_matrix_from_angles(adj_angles: list, lens: list) -> np.nda
 #     inverse_neg = [1, 1, 1, -1, -1, -1, 1]
 #     for adj_agl in adj_angle_list:
 #         adj_agl = [x*y for x, y in zip(inverse_neg,adj_agl)]
-#         end_rot_matrix = calculate_end_rot_matrix_from_angles(adj_agl, lengths)
+#         end_rot_matrix = calc_end_rot_matrix_from_angles(adj_agl, lengths)
 #         mtx = np.array(end_rot_matrix)
 #         end_cord = np.array([mtx[0, 3], mtx[1, 3], mtx[2, 3]])
 #         print((end_cord == exp_cord).all(), end_cord, exp_cord)

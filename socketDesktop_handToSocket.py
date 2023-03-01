@@ -39,6 +39,14 @@ def get_origin_pts(P0, P1):
     return pixel_points_camera0, pixel_points_camera1
 
 
+def swap_left_right(hand_dir):
+    if hand_dir == "Left":
+        hand_dir = "Right"
+    else:
+        hand_dir = "Left"
+    return hand_dir
+
+
 def calculate_target_steps(steps_fullTurn: int, target_degree: float) -> int:
     steps_to_move = steps_fullTurn * round(target_degree) / 360
     return round(steps_to_move)
@@ -53,34 +61,61 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     ##
 
     # SOCKET CONNECTION
-    # host = "***REMOVED***"  # client IP (desktop)
-    # port = 4005
-    # server = ("***REMOVED***", 4000)  # server IP (laptop)
+    host = "***REMOVED***"  # client IP (desktop)
+    port = 4005
+    server = ("***REMOVED***", 4000)  # server IP (laptop)
 
-    # s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    # s.bind((host, port))
-    # print("CONNECTED TO SERVER")
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.bind((host, port))
+    print("CONNECTED TO SERVER")
 
     # MEDIAPIPE CONNECTION
     mp_drawing = mp.solutions.drawing_utils
     mp_hands = mp.solutions.hands
 
     ##### DEFINED COSTANTS
-    joint_list = [
-        ["INDEX_FINGER_MCP", 5],
-        ["INDEX_FINGER_TIP", 8],
-        ["MIDDLE_FINGER_MCP", 9],
-        ["MIDDLE_FINGER_TIP", 12],
-    ]
+    joint_list = {
+        "Left": [
+            ["WRIST", 0],
+            ["INDEX_FINGER_MCP", 5],
+            ["MIDDLE_FINGER_MCP", 9],
+            ["MIDDLE_FINGER_TIP", 12],
+            ["PINKY_MCP", 17],
+        ],
+        "Right": [
+            ["WRIST", 0],
+            ["THUMB_TIP", 4],
+            ["MIDDLE_FINGER_TIP", 12],
+        ],
+    }
+
+    empty_kpt = {
+        "Right": {
+            "c0": {},
+            "c1": {},
+            "kp_3d": {},
+        },
+        "Left": {
+            "c0": {},
+            "c1": {},
+            "kp_3d": {},
+        },
+    }
+
+    for hand_dir in ["Left", "Right"]:
+        for joints in joint_list[hand_dir]:
+            empty_kpt[hand_dir]["c0"][joints[0]] = [-999, -999]
+            empty_kpt[hand_dir]["c1"][joints[0]] = [-999, -999]
+            empty_kpt[hand_dir]["kp_3d"][joints[0]] = [-999, -999, -999]
 
     bounds_list = [
         {"min": -90, "max": 200},
         {"min": 0, "max": 120},
         {"min": 0, "max": 135},
-        {"min": -180, "max": 180},
+        {"min": -270, "max": 270},
         {"min": -120, "max": 120},
-        {"min": -180, "max": 180},
-        {"min": -20, "max": 135},
+        {"min": -270, "max": 270},
+        {"min": 0, "max": 135},
     ]
 
     lens = [8 + 13 + 4, 20, 13.5, 5.5, 0, 7]
@@ -113,10 +148,16 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
     # create hand keypoints detector object.
     hands0 = mp_hands.Hands(
-        min_detection_confidence=0.5, max_num_hands=1, min_tracking_confidence=0.5
+        min_detection_confidence=0.85,
+        max_num_hands=2,
+        min_tracking_confidence=0.85,
+        model_complexity=1,
     )
     hands1 = mp_hands.Hands(
-        min_detection_confidence=0.5, max_num_hands=1, min_tracking_confidence=0.5
+        min_detection_confidence=0.85,
+        max_num_hands=2,
+        min_tracking_confidence=0.85,
+        model_complexity=1,
     )
 
     # get origin points
@@ -124,7 +165,7 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
     ###### INITALIZE LISTS FOR CALCULATIONS
     rolling_agl_list = [[0, 0, 0, 0, 0, 0, 0]]
-    num_to_avg = 4
+    num_to_avg = 12
 
     ####### SET INITIAL TIME
     priorTime = round(time() * 1000)
@@ -150,16 +191,27 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         results1 = hands1.process(frame1)
 
         # prepare list of hand keypoints of this frame
-        kpt_dict = {
-            "c0": {},
-            "c1": {},
-            "kp_3d": {},
-        }
+        kpt_dict = empty_kpt
 
         # frame0 kpts
-        if results0.multi_hand_landmarks:
-            for hand_landmarks in results0.multi_hand_landmarks:
-                for joints in joint_list:
+        if (
+            (results0.multi_hand_landmarks)
+            and (results1.multi_hand_landmarks)
+            and (len(results0.multi_hand_landmarks) == 2)
+            and (len(results0.multi_hand_landmarks[0].landmark) == 21)
+            and (len(results0.multi_hand_landmarks[1].landmark) == 21)
+            and (len(results0.multi_handedness) == 2)
+            and (len(results1.multi_hand_landmarks) == 2)
+            and (len(results1.multi_hand_landmarks[0].landmark) == 21)
+            and (len(results1.multi_hand_landmarks[1].landmark) == 21)
+            and (len(results1.multi_handedness) == 2)
+        ):
+            for i, hand_landmarks in enumerate(results0.multi_hand_landmarks):
+
+                hand_dir = results0.multi_handedness[i].classification[0].label
+                hand_dir_real = swap_left_right(hand_dir)
+
+                for joints in joint_list[hand_dir_real]:
                     j_name = joints[0]
                     j_num = joints[1]
 
@@ -170,16 +222,14 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                         round(frame0.shape[0] * hand_landmarks.landmark[j_num].y)
                     )
                     kpts = [pxl_x, pxl_y]
-                    kpt_dict["c0"][j_name] = kpts
+                    kpt_dict[hand_dir_real]["c0"][j_name] = kpts
 
-        else:
-            for joints in joint_list:
-                kpt_dict["c0"][joints[0]] = [-999, -999]
+            for i, hand_landmarks in enumerate(results1.multi_hand_landmarks):
 
-        # frame1 kpts
-        if results1.multi_hand_landmarks:
-            for hand_landmarks in results1.multi_hand_landmarks:
-                for joints in joint_list:
+                hand_dir = results1.multi_handedness[i].classification[0].label
+                hand_dir_real = swap_left_right(hand_dir)
+
+                for joints in joint_list[hand_dir_real]:
                     j_name = joints[0]
                     j_num = joints[1]
 
@@ -190,42 +240,38 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                         round(frame0.shape[0] * hand_landmarks.landmark[j_num].y)
                     )
                     kpts = [pxl_x, pxl_y]
-                    kpt_dict["c1"][j_name] = kpts
+                    kpt_dict[hand_dir_real]["c1"][j_name] = kpts
 
-        else:
-            for joints in joint_list:
-                kpt_dict["c1"][joints[0]] = [-999, -999]
+        for hand_dir in ["Left", "Right"]:
+            for joint in joint_list[hand_dir]:
+                # print(hand_dir, joint, kpt_dict)
+                kp_0 = kpt_dict[hand_dir]["c0"][joint[0]]
+                kp_1 = kpt_dict[hand_dir]["c1"][joint[0]]
 
-        for joint in joint_list:
-            kp_0 = kpt_dict["c0"][joint[0]]
-            kp_1 = kpt_dict["c1"][joint[0]]
+                if kp_0[0] == -999 or kp_1[0] == -999:
+                    kpt_dict[hand_dir]["kp_3d"][joint[0]] = [-999, -999, -999]
 
-            if kp_0[0] == -999 or kp_1[0] == -999:
-                # kpt_dict['kp_3d']["raw_" + joint] = [-999, -999, -999]
-                kpt_dict["kp_3d"][joint[0]] = [-999, -999, -999]
-
-            else:
-                kp = DLT(P0, P1, kp_0, kp_1)
-                kpt_rotated = Rx @ Rz @ kp @ flip * cord_scale
-                # kpt_dict['kp_3d']["raw_" + joint] = kp
-                kpt_dict["kp_3d"][joint[0]] = kpt_rotated
+                else:
+                    kp = DLT(P0, P1, kp_0, kp_1)
+                    kpt_rotated = Rx @ Rz @ kp @ flip * cord_scale
+                    kpt_dict[hand_dir]["kp_3d"][joint[0]] = kpt_rotated
 
         ### GET ANGLE CACLULATIONS
         curr_agl_list = [-999, -999, -999, -999, -999, -999, -999]
-        if (
-            kpt_dict["kp_3d"]["INDEX_FINGER_MCP"][0] == -999
-            or (kpt_dict["kp_3d"]["INDEX_FINGER_TIP"][0] == -999)
-            or (kpt_dict["kp_3d"]["MIDDLE_FINGER_MCP"][0] == -999)
-            or (kpt_dict["kp_3d"]["MIDDLE_FINGER_TIP"][0] == -999)
+
+        if any(
+            any(
+                any(kpt == -999 for kpt in kpt_dict[dir]["kp_3d"][joint])
+                for joint in kpt_dict[dir]["kp_3d"]
+            )
+            for dir in kpt_dict
         ):
             curr_agl_list = [-999, -999, -999, -999, -999, -999, -999]
 
         else:
             multp_agl_list = calculate_angles_given_joint_loc(
-                kpt_dict["kp_3d"]["INDEX_FINGER_MCP"],
-                kpt_dict["kp_3d"]["INDEX_FINGER_TIP"],
-                kpt_dict["kp_3d"]["MIDDLE_FINGER_MCP"],
-                kpt_dict["kp_3d"]["MIDDLE_FINGER_TIP"],
+                kpt_dict["Right"]["kp_3d"],
+                kpt_dict["Left"]["kp_3d"],
                 lens,
                 bounds_list,
             )
@@ -235,10 +281,10 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
             else:
                 # CHECK CLOSEST ANGLES
-
+                num_pos_agl_lists = len(multp_agl_list)
                 latest_angles = rolling_agl_list[-1]
-                sum_angle_diff = [0] * 4
-                for n in range(4):
+                sum_angle_diff = [0] * num_pos_agl_lists
+                for n in range(num_pos_agl_lists):
                     abs_diff = [
                         abs(x - y)
                         for x, y in zip(multp_agl_list[n][3:6], latest_angles[3:6])
@@ -297,17 +343,20 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
         ## READ OUT CORDINATES OF EACH HAND POINT IN 3D
         height = 30
-        for joint in joint_list:
-            cv.putText(
-                frame0,
-                "{}: {}".format(joint[0], str(kpt_dict["kp_3d"][joint[0]])),
-                (20, height),
-                cv.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
-                2,
-            )
-            height += 30
+        for hand_dir in ["Left", "Right"]:
+            for joint in joint_list[hand_dir]:
+                cv.putText(
+                    frame0,
+                    "{}-{}: {}".format(
+                        hand_dir, joint[0], str(kpt_dict[hand_dir]["kp_3d"][joint[0]])
+                    ),
+                    (20, height),
+                    cv.FONT_HERSHEY_SIMPLEX,
+                    0.5,
+                    (0, 255, 0),
+                    2,
+                )
+                height += 30
 
         height_2 = 700
         cv.putText(
@@ -339,12 +388,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
                 calculate_target_steps(const, angle)
                 for angle, const in zip(avg_agls, stepper_const_list)
             ]
-            print(steps_list)
 
             #### SOCKET SENDING ########
-            # msg = pickle.dumps(steps_list)
-            # s.sendto(msg, server)
-            # print("SENT: ", msg)
+            msg = pickle.dumps(steps_list)
+            s.sendto(msg, server)
+            print("SENT: ", msg)
             #########################
 
             # send data later
@@ -359,11 +407,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
         if k & 0xFF == 27:
 
             #### SOCKET SENDING ########
-            # steps_list = [0] * 7
-            # msg = pickle.dumps(steps_list)
-            # s.sendto(msg, server)
-            # print("SENT: ", msg)
-            # s.close()
+            steps_list = [0] * 7
+            msg = pickle.dumps(steps_list)
+            s.sendto(msg, server)
+            print("SENT: ", msg)
+            s.close()
             #########################
 
             break  # 27 is ESC key.
@@ -374,9 +422,6 @@ def run_mp(input_stream1, input_stream2, P0, P1):
 
 
 if __name__ == "__main__":
-
-    # input_stream1 = 'media/cam0_test.mp4'
-    # input_stream2 = 'media/cam1_test.mp4'
 
     input_stream1 = 0
     input_stream2 = 1
