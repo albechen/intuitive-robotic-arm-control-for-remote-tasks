@@ -1,4 +1,4 @@
-# bio-hand
+# Sensorless Hand Controlled Robotic Arm
 
 ![alt text](/cam_calb/handpose3d-main/media/cam0.avi " cam0.avi")
 ![alt text](/cam_calb/handpose3d-main/media/cam0.mp4 " cam0.mp4")
