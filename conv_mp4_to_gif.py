@@ -32,3 +32,8 @@ convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
 vid_name = "arm_design_version"
 convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
 # %%
+vid_name = "final_red_green"
+convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
+# %%
+vid_name = "final_bread"
+convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
