@@ -1,6 +1,7 @@
+# %%
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import DLT
+from angle_calc.utils import DLT
 from PIL import Image
 import contextlib
 import glob
@@ -27,7 +28,6 @@ def read_keypoints(filename):
 
 
 def visualize_3d(p3ds):
-
     # Rz = np.array(([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]))
     # Rx = np.array(([[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]))
     Rx = np.array(([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]]))
@@ -95,14 +95,12 @@ def visualize_3d(p3ds):
 
 
 def create_gif():
-
     # filepaths
     fp_in = "media/pics/fig_*.png"
     fp_out = "media/fig_temp.gif"
 
     # use exit stack to automatically close opened images
     with contextlib.ExitStack() as stack:
-
         # lazily load images
         imgs = (stack.enter_context(Image.open(f)) for f in sorted(glob.glob(fp_in)))
 
@@ -125,7 +123,8 @@ def create_gif():
 
 
 if __name__ == "__main__":
-
     p3ds = read_keypoints("data/kpts_3d_temp.dat")
     visualize_3d(p3ds)
     create_gif()
+
+# %%
