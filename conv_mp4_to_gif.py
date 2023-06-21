@@ -18,7 +18,7 @@ def convert_mp4_to_gif(vid_name, fps, fuzz, output_width):
 
 fps = 10
 fuzz = 10
-output_width = 1500
+output_width = 750
 
 # %%
 vid_name = "integration_remote"
@@ -37,3 +37,5 @@ convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
 # %%
 vid_name = "final_bread"
 convert_mp4_to_gif(vid_name, fps, fuzz, output_width)
+
+# %%
