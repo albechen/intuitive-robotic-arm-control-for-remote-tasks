@@ -2,7 +2,7 @@
 
 With the rise in remote work, this project aims to support preforming in person tasks  remotely. With just two webcams on the local user's side, they will be able to control a robotic arm with just their natural hand movements by capturing and interpreting their hand's 3D location and gestures in real-time.
 
-<img src="/images/final_red_green.gif?raw=true" width="1000px">
+<img src="/images/final_red_green.gif?raw=true" width="750px">
 
 ## Overview
 
