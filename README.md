@@ -2,7 +2,7 @@
 
 With the rise in remote work, this project aims to support preforming in person tasks  remotely. With just two webcams on the local user's side, they will be able to control a robotic arm with just their natural hand movements by capturing and interpreting their hand's 3D location and gestures in real-time.
 
-![final](/images/final_red_green.gif "final_red_green")
+<img src="/images/final_red_green.gif?raw=true" width="750px">
 
 ## Overview
 
@@ -32,7 +32,7 @@ Therefore, there's where the mono and stereo calibration of the two cameras came
 
 Once these rotational and transpose matrices are calibrated - they can combine into a projection matrix that summarizes how to adjust the pixel locations of each webcam's feed. With a bit of math, we're able to calculate the relative 3D location.
 
-![hand_detection](/images/hand_detection_3d.gif "hand_detection_3d")
+<img src="/images/hand_detection_3d.gif?raw=true" width="1000px">
 
 ## Robotic Arm Design
 
@@ -53,7 +53,7 @@ A large portion of designing the arm centered around the weight consideration. e
 - **Version 2: Shoulder Design** -- With moving to steppers, the smoothness as sorted out, but the weight of the servos at the elbow and wrist were doubling the weight and they didn't even have as high of a toque as the servos. Therefore, I looked to move the weight of the steppers to the shoulder.
 - **Version 3: Gear Boxes** -- While moving the elbow stepper to the shoulder worked, the design limited movement and increased complexity. Therefore, the stepper could be kept that the elbow if gear boxes were used. A planetary gear box was designed to increase the torque of the steppers for the shoulder and elbow joints which allowed them to shoulder the weight of the arm.
 
-![arm_design](/images/arm_design_version.gif "arm_design_version")
+<img src="/images/arm_design_version.gif?raw=true" width="1000px">
 
 **Arduino Implementation**
 I have no experience coding in C or C++ since freshman year of college for a single project, so I was a bit out of my element. Without the luxury of R's or Python's infinite libraries I was a bit out of my element, but quickly found it to be nice knowing explicitly what functions I'm sending the Arduino.
@@ -70,7 +70,7 @@ When working with my projects in Chemical Engineering or Data Science, there's a
 **Remote Usage**
 Using serial and socket were pleasantly the most comfortable I felt in the final steps of the project. Since I was just testing through my local network there weren't too many issues. Of course, if this project were to truly be remote there would be more work required.
 
-![integration](/images/integration_remote.gif "integration_remote")
+<img src="/images/integration_remote.gif?raw=true" width="1000px">
 
 **Inverse Kinematics**
 Inverse kinematics wasn't 100% integration, since it should just be math that works. However, I found myself watching multiple online recorded seminars on robotics to implement it. The main issue was translating my design of the 6 DOF robot -> matrices that describe it -> feeding test data using the actual designed robot. At each of these steps I found bugs and issues all round with my math, how I designed the robot vs. how the matrices describe it, how I assembled it, and all sorts of fun.
@@ -82,4 +82,5 @@ While the final product is by no means ready for any real applications, it was a
 I greatly valued learning more about practical applications and integration of software with  physical products. It was a great jumping off point for more electrically or mechanically intensive projects I'm planning on in the future!
 
 Also -- now I have an arm that can do this:
-![final](/images/final_bread.gif "final_bread")
+
+<img src="/images/final_bread.gif?raw=true" width="1000px">
