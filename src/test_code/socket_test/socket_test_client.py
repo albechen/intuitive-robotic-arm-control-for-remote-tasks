@@ -4,10 +4,10 @@ import pickle
 
 def Main():
 
-    host = "***REMOVED***"  # client ip
+    host = "192.168.0.160"  # client ip
     port = 4005
 
-    server = ("***REMOVED***", 4000)
+    server = ("192.168.0.154", 4000)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))

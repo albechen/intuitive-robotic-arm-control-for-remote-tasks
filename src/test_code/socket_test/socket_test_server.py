@@ -4,7 +4,7 @@ import pickle
 
 def Main():
 
-    host = "***REMOVED***"  # Server ip
+    host = "192.168.0.154"  # Server ip
     port = 4000
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
