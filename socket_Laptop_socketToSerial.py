@@ -5,13 +5,16 @@ from pySerialTransfer import pySerialTransfer as txfer
 from time import sleep
 import pickle
 import socket
+import json
 
 
 def Main():
-
     #### SOCKET CONNECTION ######
-    host = "***REMOVED***"  # Server ip
-    port = 4000
+    socket_json = json.load(open("socket_data.json"))
+    socket_data = socket_json["socketLaptop_socketToSerial"]
+    host = socket_data["host"]  # client IP (desktop)
+    port = socket_data["port"]
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))
     print("Server Started")

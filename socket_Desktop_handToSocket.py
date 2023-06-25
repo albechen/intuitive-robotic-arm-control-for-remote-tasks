@@ -7,6 +7,7 @@ from src.angle_calc.utils import DLT, get_projection_matrix
 from src.angle_calc.inverse_kinematics import calculate_angles_given_joint_loc
 import socket
 import pickle
+import json
 
 #%%
 def get_origin_pts(P0, P1):
@@ -61,9 +62,11 @@ def run_mp(input_stream1, input_stream2, P0, P1):
     ##
 
     # SOCKET CONNECTION
-    host = "***REMOVED***"  # client IP (desktop)
-    port = 4005
-    server = ("***REMOVED***", 4000)  # server IP (laptop)
+    socket_json = json.load(open('socket_data.json'))
+    socket_data = socket_json['socketDesktop_handToSocket']
+    host = socket_data['host']  # client IP (desktop)
+    port = socket_data['port'] 
+    server = (socket_data['server_host'], socket_data['server_port'])  # server IP (laptop)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.bind((host, port))
